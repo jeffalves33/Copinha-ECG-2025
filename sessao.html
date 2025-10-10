@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compre seus ingressos para o evento mais esperado do ano">
+  <title>LuEvents</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="index.html" class="logo">Copinha ECG</a>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html">Início</a></li>
+            <li><a href="ingressos.html">Meus Ingressos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- BARRA DE PROGRESSO -->
+  <div class="container" style="margin-top: var(--spacing-lg);">
+    <div class="progress-bar">
+      <div class="progress-step active">
+        <div class="progress-number">1</div>
+        <span class="progress-label">Sessão</span>
+      </div>
+      <div class="progress-step">
+        <div class="progress-number">2</div>
+        <span class="progress-label">Andar</span>
+      </div>
+      <div class="progress-step">
+        <div class="progress-number">3</div>
+        <span class="progress-label">Assentos</span>
+      </div>
+      <div class="progress-step">
+        <div class="progress-number">4</div>
+        <span class="progress-label">Pagamento</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELEÇÃO DE SESSÃO -->
+  <section class="section">
+    <div class="container">
+      <h1 class="text-center mb-md">Escolha sua sessão</h1>
+      <p class="text-center text-muted mb-xl" style="max-width: 600px; margin-left: auto; margin-right: auto;">
+        Selecione o horário que deseja abaixo.
+      </p>
+
+      <div class="grid grid-2" style="max-width: 900px; margin: 0 auto;">
+        <!-- Sessão 16h -->
+        <div class="card card-interactive" id="session-15h" onclick="selectSession('15h')">
+          <div class="card-header">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+              <h2 class="card-title mb-0">Sessão da Tarde</h2>
+              <span class="badge badge-success">Disponível</span>
+            </div>
+            <p class="card-subtitle mb-0"
+              style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-text);">
+              15:00
+            </p>
+          </div>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg);">
+            14 de dezembro às 15:00<br>
+            Duração aproximada: 2 horas
+          </p>
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
+            <div>
+              <div
+                style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+                Assentos disponíveis
+              </div>
+              <div style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text);">
+                690 de 690
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div
+                style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+                Preço por ingresso
+              </div>
+              <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary);">
+                R$ 70,00
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sessão 19h -->
+        <div class="card card-interactive" id="session-19h" onclick="selectSession('19h')">
+          <div class="card-header">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+              <h2 class="card-title mb-0">Sessão da Noite</h2>
+              <span class="badge badge-success">Disponível</span>
+            </div>
+            <p class="card-subtitle mb-0"
+              style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-text);">
+              19:00
+            </p>
+          </div>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg);">
+            14 de dezembro às 19:00<br>
+            Duração aproximada: 2 horas
+          </p>
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
+            <div>
+              <div
+                style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+                Assentos disponíveis
+              </div>
+              <div style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text);">
+                690 de 690
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div
+                style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+                Preço por ingresso
+              </div>
+              <div style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-primary);">
+                R$ 70,00
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width: 600px; margin: var(--spacing-xl) auto 0;">
+        <div class="alert alert-info">
+          <div>
+            <span style="font-size: var(--font-size-xl);">ℹ️</span>
+            <strong>Importante:</strong> Você pode comprar ingressos para apenas uma sessão por vez. Se desejar
+            ingressos para ambas as sessões, finalize esta compra primeiro e depois faça uma nova compra.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 LuEvents. Todos os direitos reservados.</p>
+        <!--<ul class="footer-links">
+          <li><a href="#">Termos de Uso</a></li>
+          <li><a href="#">Política de Privacidade</a></li>
+          <li><a href="#">Contato</a></li>
+        </ul>-->
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    function selectSession(session) {
+      // Salvar sessão selecionada
+      sessionStorage.setItem('selectedSession', session);
+
+      // Redirecionar para o mapa de assentos
+      window.location.href = 'andar.html?session=' + session;
+    }
+
+    // Destacar sessão se vier da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const preselectedSession = urlParams.get('session');
+    if (preselectedSession) {
+      const card = document.getElementById('session-' + preselectedSession);
+      if (card) {
+        card.style.borderColor = 'var(--color-primary)';
+        card.style.boxShadow = 'var(--shadow-lg)';
+      }
+    }
+  </script>
+</body>
+
+</html>

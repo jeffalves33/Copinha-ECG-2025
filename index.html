@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compre seus ingressos para o evento mais esperado do ano">
+  <title>LuEvents</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="index.html" class="logo">Copinha ECG</a>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html">Início</a></li>
+            <li><a href="ingressos.html">Meus Ingressos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="section-lg">
+    <div class="container">
+      <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+        <h1 class="fade-in">Copinha ECG</h1>
+        <p style="font-size: var(--font-size-xl); color: var(--color-text); margin-bottom: var(--spacing-sm);">
+          14 de dezembro
+        </p>
+        <p style="font-size: var(--font-size-xs); margin-bottom: var(--spacing-xl);">
+          📍 Av. Jerônimo Monteiro, 428 - Centro - Vitória/Espírito Santo - 29010-002
+        </p>
+        <a href="sessao.html" class="btn btn-primary btn-lg">
+          Comprar Ingressos
+        </a>
+        <a href="https://wa.me/5511999999999?text=Olá!%20Tenho%20dúvidas%20sobre%20os%20ingressos" target="_blank"
+          rel="noopener noreferrer" class="btn btn-outline btn-lg" style="margin-left: var(--spacing-md);">
+          💬 Tirar Dúvidas
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- SESSÕES DISPONÍVEIS -->
+  <section class="section">
+    <div class="container">
+      <h2 class="text-center mb-xl">Escolha uma sessão</h2>
+      <div class="grid grid-2">
+        <!-- Sessão 16h -->
+        <div class="card card-interactive" onclick="window.location.href='sessao.html?session=15h'">
+          <div class="card-header">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+              <h3 class="card-title mb-0">Sessão da Tarde</h3>
+              <span class="badge badge-success">Disponível</span>
+            </div>
+            <p class="card-subtitle mb-0">16:00</p>
+          </div>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-md);">
+            Aproveite a tarde para uma experiência inesquecível
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--color-text-secondary);">
+              <strong style="color: var(--color-text);">690</strong> assentos disponíveis
+            </span>
+            <span style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-primary);">
+              R$ 70,00
+            </span>
+          </div>
+        </div>
+
+        <!-- Sessão 19h -->
+        <div class="card card-interactive" onclick="window.location.href='sessao.html?session=19h'">
+          <div class="card-header">
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+              <h3 class="card-title mb-0">Sessão da Noite</h3>
+              <span class="badge badge-success">Disponível</span>
+            </div>
+            <p class="card-subtitle mb-0">19:00</p>
+          </div>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-md);">
+            Encerre o dia com uma experiência memorável
+          </p>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--color-text-secondary);">
+              <strong style="color: var(--color-text);">690</strong> assentos disponíveis
+            </span>
+            <span style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-primary);">
+              R$ 70,00
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMO FUNCIONA -->
+  <section class="section-lg" style="background-color: var(--color-surface);">
+    <div class="container">
+      <h2 class="text-center mb-xl">Como funciona</h2>
+      <div class="grid grid-2">
+        <!-- Passo 1 -->
+        <div class="card" style="text-align: center;">
+          <div
+            style="width: 60px; height: 60px; background-color: var(--color-primary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-md); font-size: var(--font-size-2xl); font-weight: 700;">
+            1
+          </div>
+          <h3 style="font-size: var(--font-size-xl);">Escolha a sessão</h3>
+          <p style="color: var(--color-text-secondary); margin-bottom: 0;">
+            Selecione entre a sessão da tarde (16h) ou da noite (19h)
+          </p>
+        </div>
+
+        <!-- Passo 2 -->
+        <div class="card" style="text-align: center;">
+          <div
+            style="width: 60px; height: 60px; background-color: var(--color-primary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-md); font-size: var(--font-size-2xl); font-weight: 700;">
+            2
+          </div>
+          <h3 style="font-size: var(--font-size-xl);">Escolha o andar</h3>
+          <p style="color: var(--color-text-secondary); margin-bottom: 0;">
+            Selecione entre 1º, 2º ou 3º andar
+          </p>
+        </div>
+
+        <!-- Passo 3 -->
+        <div class="card" style="text-align: center;">
+          <div
+            style="width: 60px; height: 60px; background-color: var(--color-primary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-md); font-size: var(--font-size-2xl); font-weight: 700;">
+            3
+          </div>
+          <h3 style="font-size: var(--font-size-xl);">Escolha seus assentos</h3>
+          <p style="color: var(--color-text-secondary); margin-bottom: 0;">
+            Veja o mapa do estúdio e selecione os melhores lugares
+          </p>
+        </div>
+
+        <!-- Passo 4 -->
+        <div class="card" style="text-align: center;">
+          <div
+            style="width: 60px; height: 60px; background-color: var(--color-primary); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-md); font-size: var(--font-size-2xl); font-weight: 700;">
+            4
+          </div>
+          <h3 style="font-size: var(--font-size-xl);">Pague online</h3>
+          <p style="color: var(--color-text-secondary); margin-bottom: 0;">
+            Finalize sua compra de forma rápida e segura
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INFORMAÇÕES ADICIONAIS -->
+  <section class="section">
+    <div class="container">
+      <div class="grid grid-2">
+        <!-- Localização -->
+        <div class="card">
+          <h3>📍 Localização</h3>
+          <p style="margin-bottom: var(--spacing-sm);">
+            <strong>Av. Jerônimo Monteiro, 428 - Centro - Vitória/Espírito Santo - 29010-002</strong>
+          </p>
+          <p style="color: var(--color-text-secondary); margin-bottom: 0;">
+            O Sesc Glória é um dos primeiros centros culturais do estado do Espírito Santo e um dos mais completos do
+            país.
+          </p>
+        </div>
+
+        <!-- Dúvidas Frequentes -->
+        <div class="card">
+          <h3>❓ Dúvidas Frequentes</h3>
+          <p style="margin-bottom: var(--spacing-sm);">
+            <strong>Posso comprar ingressos para as duas sessões?</strong><br>
+            Sim! Mas você precisa fazer uma compra separada para cada sessão.
+          </p>
+          <p style="color: var(--color-text-secondary); margin-bottom: 0;">
+            <strong>Como recebo meus ingressos?</strong><br>
+            Após o pagamento, você pode visualizar e baixar seus ingressos na área "Meus Ingressos".
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 LuEvents. Todos os direitos reservados.</p>
+        <!--<ul class="footer-links">
+          <li><a href="#">Termos de Uso</a></li>
+          <li><a href="#">Política de Privacidade</a></li>
+          <li><a href="https://wa.me/5511999999999?text=Olá!%20Tenho%20dúvidas%20sobre%20os%20ingressos" target="_blank"
+              rel="noopener noreferrer">WhatsApp</a></li>
+          <li><a href="#">Contato</a></li>
+        </ul>-->
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+
+</html>

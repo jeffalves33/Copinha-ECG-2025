@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compre seus ingressos para o evento mais esperado do ano">
+  <title>LuEvents</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="index.html" class="logo">Copinha ECG</a>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html">Início</a></li>
+            <li><a href="ingressos.html">Meus Ingressos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- BARRA DE PROGRESSO -->
+  <div class="container" style="margin-top: var(--spacing-lg);">
+    <div class="progress-bar">
+      <div class="progress-step completed">
+        <div class="progress-number">1</div>
+        <span class="progress-label">Sessão</span>
+      </div>
+      <div class="progress-step active">
+        <div class="progress-number">✓</div>
+        <span class="progress-label">Andar</span>
+      </div>
+      <div class="progress-step">
+        <div class="progress-number">3</div>
+        <span class="progress-label">Assentos</span>
+      </div>
+      <div class="progress-step">
+        <div class="progress-number">4</div>
+        <span class="progress-label">Pagamento</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFORMAÇÃO DA SESSÃO SELECIONADA -->
+  <section class="section">
+    <div class="container">
+      <div style="max-width: 800px; margin: 0 auto;">
+        <div class="card" style="background-color: var(--color-surface-elevated); margin-bottom: var(--spacing-lg);">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-md);">
+            <div>
+              <div
+                style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+                Sessão selecionada
+              </div>
+              <div style="font-size: var(--font-size-xl); font-weight: 700;" id="selected-session-display">
+                Carregando...
+              </div>
+            </div>
+            <a href="sessao.html" class="btn btn-secondary">
+              Trocar Sessão
+            </a>
+          </div>
+        </div>
+
+        <div class="alert alert-warning" id="session-warning" style="display: none;">
+          <span style="font-size: var(--font-size-xl);">⚠️</span>
+          <div>
+            <strong>Atenção:</strong> Ao trocar de sessão, sua seleção atual de assentos será perdida.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAPA DE ASSENTOS -->
+  <section class="section">
+    <div class="container">
+      <h2 class="text-center mb-md">Escolha seus assentos</h2>
+      <p class="text-center text-muted mb-lg" style="max-width: 600px; margin-left: auto; margin-right: auto;">
+        Toque nos assentos livres (cinza escuro) para selecioná-los. Você pode selecionar quantos assentos desejar.
+      </p>
+
+      <!-- LEGENDA -->
+      <div class="seat-legend">
+        <div class="legend-item">
+          <div class="legend-color available"></div>
+          <span>Livre</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color selected"></div>
+          <span>Selecionado</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color occupied"></div>
+          <span>Ocupado</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color reserved"></div>
+          <span>Reservado</span>
+        </div>
+      </div>
+
+      <!-- MAPA SVG -->
+      <div class="seat-map-container">
+        <svg id="seat-map" class="seat-map" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+          <!-- O mapa será gerado dinamicamente pelo JavaScript -->
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESUMO DE SELEÇÃO (STICKY BOTTOM) -->
+  <div class="selection-summary">
+    <div class="summary-info">
+      <div class="summary-label">Assentos selecionados</div>
+      <div class="summary-value" id="selected-count">0</div>
+    </div>
+    <div class="summary-info">
+      <div class="summary-label">Total</div>
+      <div class="summary-value" style="color: var(--color-primary);" id="total-price">R$ 0,00</div>
+    </div>
+    <button class="btn btn-primary btn-lg" id="continue-btn" disabled onclick="continueToCheckout()">
+      Continuar para Pagamento
+    </button>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 LuEvents. Todos os direitos reservados.</p>
+        <!--<ul class="footer-links">
+          <li><a href="#">Termos de Uso</a></li>
+          <li><a href="#">Política de Privacidade</a></li>
+          <li><a href="#">Contato</a></li>
+        </ul>-->
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    // Configuração do mapa de assentos
+    const TICKET_PRICE = 70.00;
+    const ROWS = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const SEATS_PER_ROW = [8, 10, 12, 12, 10, 8];
+
+    let selectedSeats = [];
+    let seatData = {};
+
+    // Verificar sessão selecionada
+    const selectedSession = sessionStorage.getItem('selectedSession');
+    if (!selectedSession) {
+      window.location.href = 'sessao.html';
+    }
+
+    // Exibir sessão selecionada
+    const sessionDisplay = document.getElementById('selected-session-display');
+    sessionDisplay.textContent = selectedSession === '15h' ? 'Sessão da Tarde - 15:00' : 'Sessão da Noite - 19:00';
+
+    // Gerar dados de assentos (simulando ocupação)
+    function generateSeatData() {
+      ROWS.forEach((row, rowIndex) => {
+        const seatsInRow = SEATS_PER_ROW[rowIndex];
+        for (let seat = 1; seat <= seatsInRow; seat++) {
+          const seatId = `${row}${seat}`;
+          // Simular alguns assentos ocupados/reservados aleatoriamente
+          const random = Math.random();
+          let status = 'available';
+          if (random < 0.15) status = 'occupied';
+          else if (random < 0.20) status = 'reserved';
+
+          seatData[seatId] = {
+            row: row,
+            seat: seat,
+            status: status
+          };
+        }
+      });
+    }
+
+    // Gerar mapa SVG em formato oval
+    function generateSeatMap() {
+      const svg = document.getElementById('seat-map');
+      const centerX = 400;
+      const centerY = 300;
+      const radiusX = 300;
+      const radiusY = 200;
+      const seatRadius = 12;
+
+      let yOffset = 100;
+
+      ROWS.forEach((row, rowIndex) => {
+        const seatsInRow = SEATS_PER_ROW[rowIndex];
+        const rowRadiusX = radiusX - (rowIndex * 40);
+        const rowRadiusY = radiusY - (rowIndex * 30);
+
+        // Label da fileira
+        const rowLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        rowLabel.setAttribute('x', centerX - rowRadiusX - 40);
+        rowLabel.setAttribute('y', yOffset + (rowIndex * 70) + 5);
+        rowLabel.setAttribute('class', 'row-label');
+        rowLabel.textContent = row;
+        svg.appendChild(rowLabel);
+
+        for (let seat = 1; seat <= seatsInRow; seat++) {
+          const seatId = `${row}${seat}`;
+          const angle = (Math.PI / (seatsInRow + 1)) * seat;
+
+          // Calcular posição no arco oval
+          const x = centerX - rowRadiusX + (rowRadiusX * 2 * (seat / (seatsInRow + 1)));
+          const y = yOffset + (rowIndex * 70) + Math.sin(angle) * 20;
+
+          // Criar círculo do assento
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', x);
+          circle.setAttribute('cy', y);
+          circle.setAttribute('r', seatRadius);
+          circle.setAttribute('class', `seat ${seatData[seatId].status}`);
+          circle.setAttribute('data-seat-id', seatId);
+          circle.setAttribute('data-row', row);
+          circle.setAttribute('data-seat', seat);
+
+          // Adicionar acessibilidade
+          circle.setAttribute('role', 'button');
+          circle.setAttribute('aria-label', `Fileira ${row}, Assento ${seat}, ${getStatusLabel(seatData[seatId].status)}`);
+          circle.setAttribute('tabindex', seatData[seatId].status === 'available' ? '0' : '-1');
+
+          // Evento de clique
+          if (seatData[seatId].status === 'available') {
+            circle.addEventListener('click', () => toggleSeat(seatId, circle));
+            circle.addEventListener('keypress', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleSeat(seatId, circle);
+              }
+            });
+          }
+
+          svg.appendChild(circle);
+
+          // Label do número do assento
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('x', x);
+          label.setAttribute('y', y);
+          label.setAttribute('class', 'seat-label');
+          label.textContent = seat;
+          svg.appendChild(label);
+        }
+      });
+
+      // Adicionar indicador de palco
+      const stageRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      stageRect.setAttribute('x', centerX - 150);
+      stageRect.setAttribute('y', 30);
+      stageRect.setAttribute('width', 300);
+      stageRect.setAttribute('height', 40);
+      stageRect.setAttribute('fill', 'var(--color-surface-elevated)');
+      stageRect.setAttribute('stroke', 'var(--color-border)');
+      stageRect.setAttribute('stroke-width', '2');
+      stageRect.setAttribute('rx', '8');
+      svg.appendChild(stageRect);
+
+      const stageText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      stageText.setAttribute('x', centerX);
+      stageText.setAttribute('y', 55);
+      stageText.setAttribute('text-anchor', 'middle');
+      stageText.setAttribute('fill', 'var(--color-text-secondary)');
+      stageText.setAttribute('font-size', '16');
+      stageText.setAttribute('font-weight', '600');
+      stageText.textContent = 'PALCO';
+      svg.appendChild(stageText);
+    }
+
+    function getStatusLabel(status) {
+      const labels = {
+        'available': 'Livre',
+        'selected': 'Selecionado',
+        'occupied': 'Ocupado',
+        'reserved': 'Reservado'
+      };
+      return labels[status] || status;
+    }
+
+    function toggleSeat(seatId, element) {
+      if (seatData[seatId].status === 'occupied' || seatData[seatId].status === 'reserved') {
+        return;
+      }
+
+      if (selectedSeats.includes(seatId)) {
+        // Desselecionar
+        selectedSeats = selectedSeats.filter(id => id !== seatId);
+        element.classList.remove('selected');
+        element.classList.add('available');
+        seatData[seatId].status = 'available';
+      } else {
+        // Selecionar
+        selectedSeats.push(seatId);
+        element.classList.remove('available');
+        element.classList.add('selected');
+        seatData[seatId].status = 'selected';
+      }
+
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const count = selectedSeats.length;
+      const total = count * TICKET_PRICE;
+
+      document.getElementById('selected-count').textContent = count;
+      document.getElementById('total-price').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+
+      const continueBtn = document.getElementById('continue-btn');
+      continueBtn.disabled = count === 0;
+
+      // Mostrar aviso se houver assentos selecionados
+      const warning = document.getElementById('session-warning');
+      warning.style.display = count > 0 ? 'block' : 'none';
+    }
+
+    function continueToCheckout() {
+      if (selectedSeats.length === 0) return;
+
+      // Salvar seleção
+      sessionStorage.setItem('selectedSeats', JSON.stringify(selectedSeats));
+      sessionStorage.setItem('totalPrice', (selectedSeats.length * TICKET_PRICE).toFixed(2));
+
+      // Redirecionar para checkout
+      window.location.href = 'checkout.html';
+    }
+
+    // Inicializar
+    generateSeatData();
+    generateSeatMap();
+    updateSummary();
+  </script>
+</body>
+
+</html>

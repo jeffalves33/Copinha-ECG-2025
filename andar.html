@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compre seus ingressos para o evento mais esperado do ano">
+  <title>LuEvents</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="index.html" class="logo">Copinha ECG</a>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html">Início</a></li>
+            <li><a href="ingressos.html">Meus Ingressos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <div class="container" style="margin-top: var(--spacing-lg);">
+    <div class="progress-bar">
+      <div class="progress-step completed">
+        <div class="progress-number">✓</div>
+        <span class="progress-label">Sessão</span>
+      </div>
+      <div class="progress-step active">
+        <div class="progress-number">2</div>
+        <span class="progress-label">Andar</span>
+      </div>
+      <div class="progress-step">
+        <div class="progress-number">3</div>
+        <span class="progress-label">Assentos</span>
+      </div>
+      <div class="progress-step">
+        <div class="progress-number">4</div>
+        <span class="progress-label">Pagamento</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="container">
+      <h1 class="text-center mb-md">Escolha o andar</h1>
+      <p class="text-center text-muted mb-xl" style="max-width: 600px; margin-left: auto; margin-right: auto;">
+        Selecione o andar de sua preferência.
+      </p>
+
+      <div class="alert alert-info" style="max-width: 600px; margin: 0 auto var(--spacing-xl);">
+        <div>
+          <span style="font-size: var(--font-size-xl);">📋</span>
+          <strong>Sessão selecionada:</strong> <span id="selected-session-display">Carregando...</span>
+        </div>
+      </div>
+
+      <div class="grid grid-3" style="max-width: 1000px; margin: 0 auto;">
+        <div class="card card-interactive" id="floor-1" onclick="selectFloor('1')">
+          <div class="card-header">
+            <h2 class="card-title mb-0">1º Andar</h2>
+            <p class="card-subtitle mb-0" style="font-size: var(--font-size-lg); color: var(--color-text-secondary);">
+              Térreo
+            </p>
+          </div>
+          <div style="text-align: center; margin: var(--spacing-lg) 0;">
+            <div style="font-size: 4rem; line-height: 1;">🏛️</div>
+          </div>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg); min-height: 60px;">
+            Proximidade com o palco. Ideal para quem quer estar mais perto da ação.
+          </p>
+          <div style="padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
+            <div
+              style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+              Assentos disponíveis
+            </div>
+            <div style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text);">
+              45 de 50
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-interactive" id="floor-2" onclick="selectFloor('2')">
+          <div class="card-header">
+            <h2 class="card-title mb-0">2º Andar</h2>
+            <p class="card-subtitle mb-0" style="font-size: var(--font-size-lg); color: var(--color-text-secondary);">
+              Mezanino
+            </p>
+          </div>
+          <div style="text-align: center; margin: var(--spacing-lg) 0;">
+            <div style="font-size: 4rem; line-height: 1;">🎭</div>
+          </div>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg); min-height: 60px;">
+            Visão panorâmica equilibrada. Perfeito para apreciar o conjunto.
+          </p>
+          <div style="padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
+            <div
+              style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+              Assentos disponíveis
+            </div>
+            <div style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text);">
+              38 de 50
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-interactive" id="floor-3" onclick="selectFloor('3')">
+          <div class="card-header">
+            <h2 class="card-title mb-0">3º Andar</h2>
+            <p class="card-subtitle mb-0" style="font-size: var(--font-size-lg); color: var(--color-text-secondary);">
+              Superior
+            </p>
+          </div>
+          <div style="text-align: center; margin: var(--spacing-lg) 0;">
+            <div style="font-size: 4rem; line-height: 1;">🎪</div>
+          </div>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg); min-height: 60px;">
+            Vista completa do estúdio. Excelente para quem prefere uma visão geral.
+          </p>
+          <div style="padding-top: var(--spacing-md); border-top: 1px solid var(--color-border);">
+            <div
+              style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-xs);">
+              Assentos disponíveis
+            </div>
+            <div style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text);">
+              42 de 50
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width: 600px; margin: var(--spacing-xl) auto 0;">
+        <div class="alert alert-info">
+          <div>
+            <span style="font-size: var(--font-size-xl);">ℹ️</span>
+            <strong>Dica:</strong> Todos os andares possuem excelente acústica e visibilidade. Escolha de acordo com sua
+            preferência pessoal!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 LuEvents. Todos os direitos reservados.</p>
+        <!--<ul class="footer-links">
+          <li><a href="#">Termos de Uso</a></li>
+          <li><a href="#">Política de Privacidade</a></li>
+          <li><a href="https://wa.me/5511999999999?text=Olá!%20Tenho%20dúvidas%20sobre%20os%20ingressos" target="_blank"
+              rel="noopener noreferrer">WhatsApp</a></li>
+        </ul>-->
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    // Verificar se há sessão selecionada
+    const selectedSession = Cart.getSession();
+    if (!selectedSession) {
+      // Se não houver sessão, redirecionar para seleção de sessão
+      window.location.href = 'sessao.html';
+    } else {
+      // Exibir sessão selecionada
+      const sessionDisplay = document.getElementById('selected-session-display');
+      sessionDisplay.textContent = selectedSession === '15h' ? 'Sessão da Tarde (15:00)' : 'Sessão da Noite (19:00)';
+    }
+
+    function selectFloor(floor) {
+      // Salvar andar selecionado
+      Cart.setFloor(floor);
+
+      // Anunciar para leitores de tela
+      announceToScreenReader(`${floor}º andar selecionado`);
+
+      // Redirecionar para o mapa de assentos
+      window.location.href = `mapa.html?session=${selectedSession}&floor=${floor}`;
+    }
+
+    // Destacar andar se vier da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const preselectedFloor = urlParams.get('floor');
+    if (preselectedFloor) {
+      const card = document.getElementById('floor-' + preselectedFloor);
+      if (card) {
+        card.style.borderColor = 'var(--color-primary)';
+        card.style.boxShadow = 'var(--shadow-lg)';
+      }
+    }
+  </script>
+</body>
+
+</html>

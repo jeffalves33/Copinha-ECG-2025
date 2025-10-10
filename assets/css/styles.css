@@ -3,13 +3,13 @@
    ============================================ */
 :root {
   /* Cores principais */
-  --color-background: #0a0a0a;
+  --color-background: #2b2b2b;
   --color-surface: #1a1a1a;
   --color-surface-elevated: #2a2a2a;
 
-  --color-primary: #ff6b6b;
-  --color-primary-hover: #e85d75;
-  --color-primary-light: #ff8787;
+  --color-primary: #6bff72;
+  --color-primary-hover: #5de864;
+  --color-primary-light: #95ff87;
 
   --color-text: #ffffff;
   --color-text-secondary: #a0a0a0;
@@ -25,7 +25,7 @@
   /* Estados de assento */
   --color-seat-available: #ffffff;
   --color-seat-available-hover: #3a3a3a;
-  --color-seat-selected: #ff6b6b;
+  --color-seat-selected: #6bff72;
   --color-seat-occupied: #666666;
   --color-seat-reserved: #ffd93d;
 
@@ -235,7 +235,7 @@ a:hover {
 
 .btn-primary {
   background-color: var(--color-primary);
-  color: var(--color-text);
+  color: #ffffff !important;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -451,6 +451,10 @@ a:hover {
   background-color: var(--color-primary);
 }
 
+.progress-step.active {
+  color: var(--color-primary);
+}
+
 .progress-number {
   display: flex;
   align-items: center;
@@ -595,18 +599,12 @@ a:hover {
   border-top: 2px solid var(--color-border);
   padding: var(--spacing-md);
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   box-shadow: var(--shadow-xl);
   /* Permitir wrap em telas pequenas */
   flex-wrap: wrap;
-}
-
-.summary-info {
-  flex: 1;
-  /* Largura mínima para evitar quebra */
-  min-width: 100px;
 }
 
 .summary-label {
@@ -620,6 +618,30 @@ a:hover {
 .summary-value {
   font-size: var(--font-size-xl);
   font-weight: 700;
+  color: var(--color-text);
+}
+
+/* ============================================
+   MODAL
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xl);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  max-width: 520px;
+  width: 92%;
   color: var(--color-text);
 }
 

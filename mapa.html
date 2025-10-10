@@ -87,31 +87,35 @@
         Toque nos assentos livres (cinza escuro) para selecioná-los. Você pode selecionar quantos assentos desejar.
       </p>
 
-      <!-- LEGENDA -->
-      <div class="seat-legend">
-        <div class="legend-item">
-          <div class="legend-color available"></div>
-          <span>Livre</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color selected"></div>
-          <span>Selecionado</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color occupied"></div>
-          <span>Ocupado</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color reserved"></div>
-          <span>Reservado</span>
-        </div>
-      </div>
-
       <!-- MAPA SVG -->
       <div class="seat-map-container">
         <svg id="seat-map" class="seat-map" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
           <!-- O mapa será gerado dinamicamente pelo JavaScript -->
         </svg>
+      </div>
+
+      <!-- LEGENDA -->
+      <div class="seat-legend" style="display: flex; gap: 20px; font-size: 0.85rem; color: #a0a0a0;">
+        <div class="legend-item">
+          <div class="legend-color available"></div>
+          <span>Livre</span><span class="dot"
+            style="margin-left: 5px; height: 10px; width: 10px; background-color: #ffffff; border-radius: 50%; display: inline-block;"></span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color selected"></div>
+          <span>Selecionado</span><span class="dot"
+            style="margin-left: 5px; height: 10px; width: 10px; background-color: #ff6b6b; border-radius: 50%; display: inline-block;"></span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color occupied"></div>
+          <span>Ocupado</span><span class="dot"
+            style="margin-left: 5px; height: 10px; width: 10px; background-color: #666666; border-radius: 50%; display: inline-block;"></span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color reserved"></div>
+          <span>Reservado</span><span class="dot"
+            style="margin-left: 5px; height: 10px; width: 10px; background-color: #ffd93d; border-radius: 50%; display: inline-block;"></span>
+        </div>
       </div>
     </div>
   </section>
@@ -147,201 +151,294 @@
 
   <script src="assets/js/app.js"></script>
   <script>
-    // Configuração do mapa de assentos
-    const TICKET_PRICE = 70.00;
-    const ROWS = ['A', 'B', 'C', 'D', 'E', 'F'];
-    const SEATS_PER_ROW = [8, 10, 12, 12, 10, 8];
-
-    let selectedSeats = [];
-    let seatData = {};
-
-    // Verificar sessão selecionada
+    // ==========================
+    // CONTEXTO / SESSÃO ATUAL
+    // ==========================
+    const TICKET_PRICE = 70.00; // mantenha se já existir
     const selectedSession = sessionStorage.getItem('selectedSession');
-    if (!selectedSession) {
-      window.location.href = 'sessao.html';
-    }
+    if (!selectedSession) window.location.href = 'sessao.html';
+    document.getElementById('selected-session-display').textContent =
+      selectedSession === '15h' ? 'Sessão da Tarde - 15:00' : 'Sessão da Noite - 19:00';
 
-    // Exibir sessão selecionada
-    const sessionDisplay = document.getElementById('selected-session-display');
-    sessionDisplay.textContent = selectedSession === '15h' ? 'Sessão da Tarde - 15:00' : 'Sessão da Noite - 19:00';
+    // ==========================
+    // CONFIGURAÇÃO DO MAPA (3 BLOCOS)
+    // ==========================
+    // Fileiras com quantidade por bloco: [esquerda, centro, direita]
+    const ROWS_DEF = [
+      { id: 'A', blocks: [5, 12, 6] },
+      { id: 'B', blocks: [7, 12, 7] },
+      { id: 'C', blocks: [8, 12, 8] },
+      { id: 'D', blocks: [8, 12, 8] },
+      { id: 'E', blocks: [8, 12, 8] },
+      { id: 'F', blocks: [8, 12, 8] },
+      { id: 'G', blocks: [8, 12, 8] },
+      { id: 'H', blocks: [8, 12, 8] },
+      { id: 'I', blocks: [8, 12, 8] },
+      { id: 'J', blocks: [8, 12, 8] },
+      { id: 'K', blocks: [8, 12, 8] },
+      { id: 'L', blocks: [7, 10, 8] },
+    ];
 
-    // Gerar dados de assentos (simulando ocupação)
+    // Poltronas acessíveis (exemplo; opcional)
+    const WHEELCHAIR = new Set(['A-06', 'A-23', 'L-08', 'L-09', 'L-15', 'L-18', 'L-19', 'L-25']);
+
+    // Tamanhos e espaçamentos
+    const seatR = 12;           // raio do círculo
+    const seatGap = 8;          // espaço entre centros (usado no cálculo de largura efetiva)
+    const rowGap = 52;          // distância vertical entre fileiras
+    const leftMargin = 32;
+    const rightMargin = 32;
+    const topOffset = 60;
+    const aisleWidth = 90;      // largura dos corredores entre blocos
+
+    // Curvatura (pontas mais altas, meio mais reto)
+    const baseAmplitude = 50;
+    const amplitudeGain = 1.4;
+    const flattenMid = 0.82;
+
+    // ==========================
+    // ESTADO
+    // ==========================
+    let selectedSeats = [];
+    const seatData = {}; // { "A-01": {row:'A', numAcross:1, status:'available'} }
+
+    // ==========================
+    // GERAÇÃO DE DADOS (simulação de ocupado/reservado)
+    // ==========================
     function generateSeatData() {
-      ROWS.forEach((row, rowIndex) => {
-        const seatsInRow = SEATS_PER_ROW[rowIndex];
-        for (let seat = 1; seat <= seatsInRow; seat++) {
-          const seatId = `${row}${seat}`;
-          // Simular alguns assentos ocupados/reservados aleatoriamente
-          const random = Math.random();
+      ROWS_DEF.forEach(row => {
+        const totalAcross = row.blocks.reduce((a, b) => a + b, 0);
+        for (let i = 1; i <= totalAcross; i++) {
+          const id = `${row.id}-${String(i).padStart(2, '0')}`;
+          const rnd = Math.random();
           let status = 'available';
-          if (random < 0.15) status = 'occupied';
-          else if (random < 0.20) status = 'reserved';
-
-          seatData[seatId] = {
-            row: row,
-            seat: seat,
-            status: status
-          };
+          if (rnd < 0.15) status = 'occupied';
+          else if (rnd < 0.20) status = 'reserved';
+          seatData[id] = { row: row.id, numAcross: i, status };
         }
       });
     }
 
-    // Gerar mapa SVG em formato oval
+    // ==========================
+    // DESENHO DO MAPA (SVG)
+    // ==========================
     function generateSeatMap() {
       const svg = document.getElementById('seat-map');
-      const centerX = 400;
-      const centerY = 300;
-      const radiusX = 300;
-      const radiusY = 200;
-      const seatRadius = 12;
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-      let yOffset = 100;
+      // 1) medidas máximas por bloco (considerando círculos)
+      const blockMax = [0, 0, 0];
+      ROWS_DEF.forEach(r => {
+        blockMax[0] = Math.max(blockMax[0], r.blocks[0]);
+        blockMax[1] = Math.max(blockMax[1], r.blocks[1]);
+        blockMax[2] = Math.max(blockMax[2], r.blocks[2]);
+      });
+      const stepX = seatR * 2 + seatGap; // diâmetro + gap
+      const blockMaxWidth = blockMax.map(n => n > 0 ? n * (seatR * 2) + (n - 1) * seatGap : 0);
 
-      ROWS.forEach((row, rowIndex) => {
-        const seatsInRow = SEATS_PER_ROW[rowIndex];
-        const rowRadiusX = radiusX - (rowIndex * 40);
-        const rowRadiusY = radiusY - (rowIndex * 30);
+      const contentWidth = blockMaxWidth[0] + aisleWidth + blockMaxWidth[1] + aisleWidth + blockMaxWidth[2];
+      const totalWidth = leftMargin + contentWidth + rightMargin;
+      const approxHeight = topOffset + ROWS_DEF.length * rowGap + baseAmplitude + 120;
 
-        // Label da fileira
-        const rowLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        rowLabel.setAttribute('x', centerX - rowRadiusX - 40);
-        rowLabel.setAttribute('y', yOffset + (rowIndex * 70) + 5);
-        rowLabel.setAttribute('class', 'row-label');
-        rowLabel.textContent = row;
-        svg.appendChild(rowLabel);
+      // posicionamento de cada bloco (borda esquerda)
+      const blockLeftX = [
+        leftMargin,
+        leftMargin + blockMaxWidth[0] + aisleWidth,
+        leftMargin + blockMaxWidth[0] + aisleWidth + blockMaxWidth[1] + aisleWidth
+      ];
 
-        for (let seat = 1; seat <= seatsInRow; seat++) {
-          const seatId = `${row}${seat}`;
-          const angle = (Math.PI / (seatsInRow + 1)) * seat;
+      // viewBox responsivo ao conteúdo
+      svg.setAttribute('viewBox', `0 0 ${totalWidth} ${approxHeight}`);
+      svg.style.aspectRatio = `${totalWidth} / ${approxHeight}`; // evita “sobras” laterais
 
-          // Calcular posição no arco oval
-          const x = centerX - rowRadiusX + (rowRadiusX * 2 * (seat / (seatsInRow + 1)));
-          const y = yOffset + (rowIndex * 70) + Math.sin(angle) * 20;
+      // 2) corredores (opcional)
+      drawAisles(svg, blockLeftX, blockMaxWidth, approxHeight);
 
-          // Criar círculo do assento
-          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          circle.setAttribute('cx', x);
-          circle.setAttribute('cy', y);
-          circle.setAttribute('r', seatRadius);
-          circle.setAttribute('class', `seat ${seatData[seatId].status}`);
-          circle.setAttribute('data-seat-id', seatId);
-          circle.setAttribute('data-row', row);
-          circle.setAttribute('data-seat', seat);
+      // 3) fileiras
+      ROWS_DEF.forEach((row, rowIndex) => {
+        const yBase = topOffset + rowIndex * rowGap;
+        const amp = baseAmplitude + rowIndex * amplitudeGain;
 
-          // Adicionar acessibilidade
-          circle.setAttribute('role', 'button');
-          circle.setAttribute('aria-label', `Fileira ${row}, Assento ${seat}, ${getStatusLabel(seatData[seatId].status)}`);
-          circle.setAttribute('tabindex', seatData[seatId].status === 'available' ? '0' : '-1');
+        // rótulo da fileira (A, B, ...)
+        const yForLabel = curveY(leftMargin + 10, yBase, amp, contentWidth);
+        svg.appendChild(textEl(leftMargin - 18, yForLabel + 4, row.id, { class: 'row-label' }));
 
-          // Evento de clique
-          if (seatData[seatId].status === 'available') {
-            circle.addEventListener('click', () => toggleSeat(seatId, circle));
-            circle.addEventListener('keypress', (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                toggleSeat(seatId, circle);
-              }
-            });
+        // numeração geral por fileira (da direita p/ esquerda)
+        const totalAcross = row.blocks.reduce((a, b) => a + b, 0);
+        let acrossLtr = 1;
+
+        row.blocks.forEach((count, blockIdx) => {
+          if (count <= 0) return;
+
+          // montar assentos do bloco (com numeração RTL ao longo da fileira)
+          const items = [];
+          for (let j = 0; j < count; j++) {
+            const rtlNumber = totalAcross - acrossLtr + 1; // numeração por fileira
+            const code = `${row.id}-${String(rtlNumber).padStart(2, '0')}`;
+            items.push({ rtlNumber, code });
+            acrossLtr++;
           }
 
-          svg.appendChild(circle);
+          // largura usada pelo bloco
+          const usedWidth = items.length * (seatR * 2) + (items.length - 1) * seatGap;
 
-          // Label do número do assento
-          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          label.setAttribute('x', x);
-          label.setAttribute('y', y);
-          label.setAttribute('class', 'seat-label');
-          label.textContent = seat;
-          svg.appendChild(label);
-        }
+          // ALINHAMENTO: bloco 0 à ESQ, bloco 2 à DIR, bloco 1 central
+          const startLeft =
+            blockIdx === 0
+              ? blockLeftX[0]
+              : blockIdx === 2
+                ? blockLeftX[2] + (blockMaxWidth[2] - usedWidth)
+                : blockLeftX[1] + (blockMaxWidth[1] - usedWidth) / 2;
+
+          // posicionamento cumulativo
+          let xLeft = startLeft;
+          for (const it of items) {
+            const cx = xLeft + seatR;                     // centro do círculo
+            const cy = curveY(cx, yBase, amp, contentWidth);
+
+            // status inicial / acessibilidade
+            const data = seatData[it.code];
+            const status = data ? data.status : 'available';
+
+            // elemento principal (g.seat + circle + label)
+            const g = svgEl('g', {
+              class: `seat ${status}`,
+              role: 'button',
+              tabindex: status === 'available' ? 0 : -1,
+              'data-seat-id': it.code,
+              'aria-label': `Fileira ${row.id} • Nº ${String(it.rtlNumber).padStart(2, '0')} • ${getStatusLabel(status)}`
+            });
+
+            // marcar cadeira acessível
+            const isWC = WHEELCHAIR.has(it.code);
+            if (isWC) {
+              g.classList.add('wheelchair');
+              g.setAttribute(
+                'aria-label',
+                `Fileira ${row.id} • Nº ${String(it.rtlNumber).padStart(2, '0')} • ${getStatusLabel(status)} • Acessível`
+              );
+            }
+
+            const circle = svgEl('circle', { cx, cy, r: seatR });
+            const label = textEl(cx, cy, String(it.rtlNumber).padStart(2, '0'), { class: 'seat-label' });
+
+            g.appendChild(circle);
+            g.appendChild(label);
+
+            if (isWC) {
+              const wc = textEl(cx + seatR * 0.55, cy + seatR * 0.55, '♿', { class: 'wc-glyph' });
+              g.appendChild(wc);
+            }
+
+            if (status === 'available') {
+              g.addEventListener('click', () => toggleSeat(it.code, g));
+              g.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); g.dispatchEvent(new Event('click')); }
+              });
+            }
+
+            svg.appendChild(g);
+            xLeft += stepX;
+          }
+        });
       });
 
-      // Adicionar indicador de palco
-      const stageRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      stageRect.setAttribute('x', centerX - 150);
-      stageRect.setAttribute('y', 30);
-      stageRect.setAttribute('width', 300);
-      stageRect.setAttribute('height', 40);
-      stageRect.setAttribute('fill', 'var(--color-surface-elevated)');
-      stageRect.setAttribute('stroke', 'var(--color-border)');
-      stageRect.setAttribute('stroke-width', '2');
-      stageRect.setAttribute('rx', '8');
-      svg.appendChild(stageRect);
-
-      const stageText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      stageText.setAttribute('x', centerX);
-      stageText.setAttribute('y', 55);
-      stageText.setAttribute('text-anchor', 'middle');
-      stageText.setAttribute('fill', 'var(--color-text-secondary)');
-      stageText.setAttribute('font-size', '16');
-      stageText.setAttribute('font-weight', '600');
-      stageText.textContent = 'PALCO';
-      svg.appendChild(stageText);
+      // 4) Palco
+      const stageW = 300, stageH = 40;
+      const stageX = (totalWidth - stageW) / 2, stageY = 20;
+      const stageRect = svgEl('rect', {
+        x: stageX, y: stageY, width: stageW, height: stageH, rx: 8,
+        fill: 'var(--color-surface-elevated)', stroke: 'var(--color-border)', 'stroke-width': 2
+      });
+      const stageText = textEl(stageX + stageW / 2, stageY + stageH / 2 + 2, 'PALCO', {
+        'text-anchor': 'middle', fill: 'var(--color-text-secondary)', 'font-size': 16, 'font-weight': 600
+      });
+      svg.appendChild(stageRect); svg.appendChild(stageText);
     }
 
-    function getStatusLabel(status) {
-      const labels = {
-        'available': 'Livre',
-        'selected': 'Selecionado',
-        'occupied': 'Ocupado',
-        'reserved': 'Reservado'
-      };
-      return labels[status] || status;
+    // curva da fileira
+    function curveY(x, yBase, amp, contentWidth) {
+      const t = (x - leftMargin) / contentWidth; // 0..1
+      const u = (t * 2) - 1;                     // -1..1
+      const shaped = 1 - Math.pow(Math.abs(u), 2 / flattenMid);
+      return yBase + amp * shaped;
     }
 
-    function toggleSeat(seatId, element) {
-      if (seatData[seatId].status === 'occupied' || seatData[seatId].status === 'reserved') {
-        return;
-      }
+    function drawAisles(svg, blockLeftX, blockMaxWidth, approxHeight) {
+      const y1 = topOffset;
+      const y2 = approxHeight - 120;
+      const pad = 6;
+      const ax1 = blockLeftX[0] + blockMaxWidth[0] + pad;
+      const ax2 = blockLeftX[1] + blockMaxWidth[1] + pad;
+      const w = Math.max(4, aisleWidth - 2 * pad);
+      svg.appendChild(svgEl('rect', { x: ax1, y: y1, width: w, height: y2 - y1, class: 'aisle' }));
+      svg.appendChild(svgEl('rect', { x: ax2, y: y1, width: w, height: y2 - y1, class: 'aisle' }));
+    }
+
+    // Helpers SVG
+    function svgEl(tag, attrs = {}) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+    function textEl(x, y, txt, attrs = {}) {
+      const el = svgEl('text', { x, y, ...attrs });
+      el.textContent = txt; return el;
+    }
+
+    // ==========================
+    // UI / SELEÇÃO
+    // ==========================
+    function getStatusLabel(s) {
+      return { available: 'Livre', selected: 'Selecionado', occupied: 'Ocupado', reserved: 'Reservado' }[s] || s;
+    }
+
+    function toggleSeat(seatId, seatGroupEl) {
+      const data = seatData[seatId];
+      if (!data || data.status === 'occupied' || data.status === 'reserved') return;
 
       if (selectedSeats.includes(seatId)) {
-        // Desselecionar
+        // desmarcar
         selectedSeats = selectedSeats.filter(id => id !== seatId);
-        element.classList.remove('selected');
-        element.classList.add('available');
-        seatData[seatId].status = 'available';
+        seatGroupEl.classList.remove('selected');
+        seatGroupEl.classList.add('available');
+        data.status = 'available';
       } else {
-        // Selecionar
+        // marcar
         selectedSeats.push(seatId);
-        element.classList.remove('available');
-        element.classList.add('selected');
-        seatData[seatId].status = 'selected';
+        seatGroupEl.classList.remove('available');
+        seatGroupEl.classList.add('selected');
+        data.status = 'selected';
       }
-
       updateSummary();
     }
 
     function updateSummary() {
       const count = selectedSeats.length;
       const total = count * TICKET_PRICE;
-
       document.getElementById('selected-count').textContent = count;
       document.getElementById('total-price').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-
-      const continueBtn = document.getElementById('continue-btn');
-      continueBtn.disabled = count === 0;
-
-      // Mostrar aviso se houver assentos selecionados
-      const warning = document.getElementById('session-warning');
-      warning.style.display = count > 0 ? 'block' : 'none';
+      const btn = document.getElementById('continue-btn');
+      btn.disabled = count === 0;
+      document.getElementById('session-warning').style.display = count > 0 ? 'block' : 'none';
     }
 
     function continueToCheckout() {
-      if (selectedSeats.length === 0) return;
-
-      // Salvar seleção
+      if (!selectedSeats.length) return;
       sessionStorage.setItem('selectedSeats', JSON.stringify(selectedSeats));
       sessionStorage.setItem('totalPrice', (selectedSeats.length * TICKET_PRICE).toFixed(2));
-
-      // Redirecionar para checkout
       window.location.href = 'checkout.html';
     }
+    window.continueToCheckout = continueToCheckout;
 
-    // Inicializar
+    // ==========================
+    // BOOT
+    // ==========================
     generateSeatData();
     generateSeatMap();
     updateSummary();
   </script>
+
 </body>
 
 </html>

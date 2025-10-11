@@ -43,10 +43,7 @@
         <div class="filters-grid">
           <div class="form-group">
             <label for="seatFilterSession" class="form-label">Sessão</label>
-            <select id="seatFilterSession" class="form-select">
-              <option value="16:00">16:00 - Matinê</option>
-              <option value="19:00">19:00 - Noturna</option>
-            </select>
+            <select id="seatFilterSession" class="form-select"></select>
           </div>
 
           <div class="form-group">
@@ -147,21 +144,25 @@
   <script src="../assets/js/app.js"></script>
   <script src="js/admin.js"></script>
   <script>
-    // auth
-    AdminAuth.checkAuth();
+    (async () => {
+      // auth
+      AdminAuth.checkAuth();
 
-    // carregar assentos
-    AdminSeats.loadSeats();
+      // preenche sessões com UUID
+      await populateSessionsSelect('seatFilterSession', true);
 
-    // filtros
-    document.getElementById('seatFilterSession').addEventListener('change', AdminSeats.applyFilters);
-    document.getElementById('seatFilterFloor').addEventListener('change', AdminSeats.applyFilters);
-    document.getElementById('seatSearch').addEventListener('input', AdminSeats.applyFilters);
+      // carregar assentos
+      await AdminSeats.loadSeats();
 
-    // logout
-    document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+      // filtros
+      document.getElementById('seatFilterSession').addEventListener('change', AdminSeats.applyFilters);
+      document.getElementById('seatFilterFloor').addEventListener('change', AdminSeats.applyFilters);
+      document.getElementById('seatSearch').addEventListener('input', AdminSeats.applyFilters);
+
+      // logout
+      document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+    })();
   </script>
-
 </body>
 
 </html>

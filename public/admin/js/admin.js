@@ -15,6 +15,25 @@ async function api(path, opts) {
   return r.json();
 }
 
+async function populateSessionsSelect(selectId, includeAll = true) {
+  const sel = qs('#' + selectId);
+  if (!sel) return;
+  sel.innerHTML = includeAll ? `<option value="">Todas</option>` : '';
+
+  const r = await fetch('/api/sessions'); // sua rota pública já lista sessões
+  if (!r.ok) return;
+  const sessions = await r.json(); // [{id,name,...}]
+
+  sessions.forEach(s => {
+    const opt = document.createElement('option');
+    // exibe “16:00” se seu name for “16h”
+    const label = s.name?.endsWith('h') ? s.name.replace('h', ':00') : s.name;
+    opt.value = s.id;       // <<<<<<<<<<<<<<  usa o UUID aqui!
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+}
+
 // ---------- auth ----------
 const AdminAuth = {
   checkAuth() {

@@ -43,20 +43,16 @@
         <div class="filters-grid">
           <div class="form-group">
             <label for="filterSession" class="form-label">Sessão</label>
-            <select id="filterSession" class="form-select">
-              <option value="">Todas as sessões</option>
-              <option value="16:00">16:00 - Matinê</option>
-              <option value="19:00">19:00 - Noturna</option>
-            </select>
+            <select id="filterSession" class="form-select"></select>
           </div>
 
           <div class="form-group">
             <label for="filterFloor" class="form-label">Andar</label>
             <select id="filterFloor" class="form-select">
               <option value="">Todos os andares</option>
-              <option value="terrea">Térreo</option>
-              <option value="mezanino">Mezanino</option>
-              <option value="superior">Superior</option>
+              <option value="1">Térreo</option>
+              <option value="2">Mezanino</option>
+              <option value="3">Superior</option>
             </select>
           </div>
 
@@ -127,24 +123,28 @@
   <script src="../assets/js/app.js"></script>
   <script src="js/admin.js"></script>
   <script>
-    // auth
-    AdminAuth.checkAuth();
+    (async () => {
+      // auth
+      AdminAuth.checkAuth();
 
-    // carregar vendas
-    AdminSales.loadSales();
+      // preenche sessões com UUID (e rótulo "16:00"/"19:00")
+      await populateSessionsSelect('filterSession', true);
 
-    // filtros
-    document.getElementById('filterSession').addEventListener('change', AdminSales.applyFilters);
-    document.getElementById('filterFloor').addEventListener('change', AdminSales.applyFilters);
-    document.getElementById('filterSearch').addEventListener('input', AdminSales.applyFilters);
+      // carregar vendas
+      await AdminSales.loadSales();
 
-    // export CSV
-    document.getElementById('exportBtn').addEventListener('click', AdminSales.exportToCSV);
+      // filtros
+      document.getElementById('filterSession').addEventListener('change', AdminSales.applyFilters);
+      document.getElementById('filterFloor').addEventListener('change', AdminSales.applyFilters);
+      document.getElementById('filterSearch').addEventListener('input', AdminSales.applyFilters);
 
-    // modal cancelar (botões no HTML chamam AdminSales.*)
-    document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+      // export CSV
+      document.getElementById('exportBtn').addEventListener('click', AdminSales.exportToCSV);
+
+      // logout
+      document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+    })();
   </script>
-
 </body>
 
 </html>

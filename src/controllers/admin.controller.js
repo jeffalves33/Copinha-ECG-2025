@@ -5,51 +5,63 @@ const { refundPayment } = require('../services/mercadoPagoRefund.service');
 
 // helpers
 const fmtSeat = (s) => `${s.row_label}-${String(s.seat_number).padStart(2, '0')}`;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function resolveSessionId(sessionIdOrName) {
+    if (!sessionIdOrName) return null;
+    if (UUID_RE.test(sessionIdOrName)) return sessionIdOrName;
+
+    const normalized = String(sessionIdOrName).toLowerCase().replace(':00', 'h').replace(':', 'h');
+
+    const { data: s } = await supabase
+        .from('sessions')
+        .select('id, name')
+        .ilike('name', normalized)
+        .limit(1)
+        .maybeSingle();
+
+    return s?.id ?? null;
+}
 
 async function getDashboardMetrics(req, res, next) {
     try {
-        const sessionId = req.query.sessionId || null;
+        const raw = req.query.sessionId || null;
+        const sessionId = await resolveSessionId(raw);
 
-        // assentos por status
-        let q = supabase.from('seats')
-            .select('status', { count: 'exact', head: false });
-        if (sessionId) q = q.eq('session_id', sessionId);
-        const { data: seatsAll, error: e1 } = await q;
-        if (e1) throw e1;
-
+        // 1) contagem por status (sem limite de 1000, usa count exato no header)
+        const statuses = ['available', 'reserved', 'sold', 'blocked'];
         const counts = { available: 0, reserved: 0, sold: 0, blocked: 0 };
-        seatsAll.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
 
-        // vendido por sessão & por andar (join com order_items)
-        const { data: soldAgg } = await supabase.rpc('exec', { // fallback sem RPC: use selects
-            // se você não tem essa RPC, fazemos selects abaixo
-        }).limit(0);
+        for (const st of statuses) {
+            let q = supabase.from('seats').select('id', { count: 'exact', head: true }).eq('status', st);
+            if (sessionId) q = q.eq('session_id', sessionId);
+            const { count, error } = await q;
+            if (error) throw error;
+            counts[st] = count || 0;
+        }
+        // (count exato via header é o caminho oficial) :contentReference[oaicite:2]{index=2}
 
-        // receita bruta (orders paid)
-        let qo = supabase.from('orders')
-            .select('total_amount', { head: false });
-        if (sessionId) qo = qo.eq('session_id', sessionId);
-        qo = qo.eq('status', 'paid');
-        const { data: paidOrders, error: e2 } = await qo;
-        if (e2) throw e2;
+        // 2) receita e quantidade de pagamentos via RPC (evita 'sum' no select)
+        const { data: agg, error: aggErr } = await supabase.rpc('admin_orders_agg', {
+            p_session_id: sessionId
+        });
+        if (aggErr) throw aggErr;
 
-        const gross = (paidOrders || []).reduce((acc, o) => acc + Number(o.total_amount || 0), 0);
-        const fees = computeFees(gross, paidOrders?.length || 0); // parametrizado
+        const gross = Number(agg?.[0]?.gross || 0);
+        const paymentsCount = Number(agg?.[0]?.payments || 0);
+
+        const fees = computeFees(gross, paymentsCount);
         const net = Math.max(gross - fees.total, 0);
 
-        res.json({
-            ok: true,
-            seats: counts,
-            revenue: { gross, fees, net }
-        });
+        res.json({ ok: true, seats: counts, revenue: { gross, fees, net } });
     } catch (e) { next(e); }
 }
 
 async function listSales(req, res, next) {
     try {
-        const { sessionId, floor, search, page = 1, pageSize = 50 } = req.query;
+        const { sessionId: raw, floor, search, page = 1, pageSize = 50 } = req.query;
+        const sessionId = await resolveSessionId(raw);
 
-        // pedidos pagos
         let q = supabase.from('orders')
             .select('id,total_amount,paid_at,session_id,status,user_id, user:user_id(name,email,phone)')
             .eq('status', 'paid')
@@ -140,7 +152,11 @@ async function exportSales(req, res, next) {
 
 async function listSeats(req, res, next) {
     try {
-        const { sessionId, floor, q } = req.query;
+        const raw = req.query.sessionId || null;
+        const sessionId = await resolveSessionId(raw);
+        const floor = req.query.floor || null;
+        const q = req.query.q || '';
+
         let s = supabase.from('seats')
             .select('id, session_id, floor, row_label, seat_number, status, reserve_token, reserve_expires');
 

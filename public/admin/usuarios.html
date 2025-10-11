@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestão de Usuários - Admin</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+
+<body>
+  <header class="admin-header">
+    <div class="container">
+      <div class="admin-header-content">
+        <div class="admin-logo">
+          <h1>📊 Painel Admin</h1>
+        </div>
+        <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container">
+      <ul class="admin-nav-links">
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="vendas.html">Vendas</a></li>
+        <li><a href="assentos.html">Assentos</a></li>
+        <li><a href="usuarios.html" class="active">Usuários</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container">
+      <div class="admin-page-header">
+        <h2>Gestão de Usuários</h2>
+        <p>Busque e gerencie informações dos compradores</p>
+      </div>
+
+      <div class="search-section">
+        <div class="search-box">
+          <input type="text" id="userSearch" class="form-input"
+            placeholder="Buscar por nome, e-mail, telefone ou CPF..." />
+          <button class="btn btn-primary" onclick="AdminUsers.search()">🔍 Buscar</button>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Resultados da Busca</h3>
+        <div id="userResults">
+          <div class="empty-state">
+            <div class="empty-state-icon">👤</div>
+            <h4>Nenhuma busca realizada</h4>
+            <p>Use o campo acima para buscar usuários por nome, e-mail, telefone ou CPF</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Estatísticas Gerais</h3>
+        <div class="user-stats-grid">
+          <div class="user-stat-card">
+            <div class="user-stat-icon">👥</div>
+            <div class="user-stat-content">
+              <div class="user-stat-label">Total de Compradores</div>
+              <div class="user-stat-value" id="totalBuyers">0</div>
+            </div>
+          </div>
+
+          <div class="user-stat-card">
+            <div class="user-stat-icon">🎫</div>
+            <div class="user-stat-content">
+              <div class="user-stat-label">Média de Ingressos/Compra</div>
+              <div class="user-stat-value" id="avgTickets">0</div>
+            </div>
+          </div>
+
+          <div class="user-stat-card">
+            <div class="user-stat-icon">💰</div>
+            <div class="user-stat-content">
+              <div class="user-stat-label">Ticket Médio</div>
+              <div class="user-stat-value" id="avgValue">R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="userModal" class="modal" style="display: none">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3>Detalhes do Usuário</h3>
+        <button class="modal-close" onclick="AdminUsers.closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="userModalBody">
+        Conteúdo será preenchido dinamicamente
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="AdminUsers.closeModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    // auth
+    AdminAuth.checkAuth();
+
+    // estatísticas iniciais
+    AdminUsers.loadStats();
+
+    // busca com Enter
+    document.getElementById('userSearch').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') AdminUsers.search();
+    });
+
+    // logout
+    document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+  </script>
+</body>
+
+</html>

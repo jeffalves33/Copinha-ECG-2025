@@ -242,8 +242,6 @@ document.addEventListener("DOMContentLoaded", () => {
       this.style.outlineOffset = ""
     })
   })
-
-  console.log("[v0] App initialized successfully")
 })
 
 // ============================================

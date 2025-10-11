@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestão de Vendas - Admin</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+
+<body>
+  <header class="admin-header">
+    <div class="container">
+      <div class="admin-header-content">
+        <div class="admin-logo">
+          <h1>📊 Painel Admin</h1>
+        </div>
+        <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container">
+      <ul class="admin-nav-links">
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="vendas.html" class="active">Vendas</a></li>
+        <li><a href="assentos.html">Assentos</a></li>
+        <li><a href="usuarios.html">Usuários</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container">
+      <div class="admin-page-header">
+        <h2>Gestão de Vendas</h2>
+        <p>Visualize e gerencie todas as vendas de ingressos</p>
+      </div>
+
+      <div class="filters-section">
+        <div class="filters-grid">
+          <div class="form-group">
+            <label for="filterSession" class="form-label">Sessão</label>
+            <select id="filterSession" class="form-select">
+              <option value="">Todas as sessões</option>
+              <option value="16:00">16:00 - Matinê</option>
+              <option value="19:00">19:00 - Noturna</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="filterFloor" class="form-label">Andar</label>
+            <select id="filterFloor" class="form-select">
+              <option value="">Todos os andares</option>
+              <option value="terrea">Térreo</option>
+              <option value="mezanino">Mezanino</option>
+              <option value="superior">Superior</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="filterSearch" class="form-label">Buscar</label>
+            <input type="text" id="filterSearch" class="form-input" placeholder="Nome, e-mail ou ID..." />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="opacity: 0">Ações</label>
+            <button id="exportBtn" class="btn btn-secondary btn-full">📥 Exportar CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID Pedido</th>
+                <th>Cliente</th>
+                <th>Contato</th>
+                <th>Sessão</th>
+                <th>Andar</th>
+                <th>Assentos</th>
+                <th>Valor</th>
+                <th>Data</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="salesTable">
+              <tr>
+                <td colspan="9" class="table-empty">Nenhuma venda encontrada</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="cancelModal" class="modal" style="display: none">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Cancelar Venda</h3>
+        <button class="modal-close" onclick="AdminSales.closeCancelModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Tem certeza que deseja cancelar esta venda?</p>
+        <div class="cancel-details" id="cancelDetails"></div>
+        <div class="form-group">
+          <label for="cancelReason" class="form-label">Motivo do Cancelamento</label>
+          <textarea id="cancelReason" class="form-textarea" rows="3"
+            placeholder="Descreva o motivo do cancelamento..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="AdminSales.closeCancelModal()">Voltar</button>
+        <button class="btn btn-primary" onclick="AdminSales.confirmCancel()">
+          Confirmar Cancelamento
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    // auth
+    AdminAuth.checkAuth();
+
+    // carregar vendas
+    AdminSales.loadSales();
+
+    // filtros
+    document.getElementById('filterSession').addEventListener('change', AdminSales.applyFilters);
+    document.getElementById('filterFloor').addEventListener('change', AdminSales.applyFilters);
+    document.getElementById('filterSearch').addEventListener('input', AdminSales.applyFilters);
+
+    // export CSV
+    document.getElementById('exportBtn').addEventListener('click', AdminSales.exportToCSV);
+
+    // modal cancelar (botões no HTML chamam AdminSales.*)
+    document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+  </script>
+
+</body>
+
+</html>

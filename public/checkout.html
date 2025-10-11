@@ -174,8 +174,8 @@
     }
 
     // Exibir informações do pedido
-    document.getElementById('checkout-session').textContent = 
-      selectedSession === '15h' ? 'Sessão da Tarde - 15:00' : 'Sessão da Noite - 19:00';
+    document.getElementById('checkout-session').textContent =
+      selectedSession === '16h' ? 'Sessão da Tarde - 16:00' : 'Sessão da Noite - 19:00';
 
     const seatsContainer = document.getElementById('checkout-seats');
     selectedSeats.forEach(seatId => {
@@ -190,10 +190,10 @@
     document.getElementById('checkout-total').textContent = formattedPrice;
 
     // Máscara de telefone simples
-    document.getElementById('phone').addEventListener('input', function(e) {
+    document.getElementById('phone').addEventListener('input', function (e) {
       let value = e.target.value.replace(/\D/g, '');
       if (value.length > 11) value = value.slice(0, 11);
-      
+
       if (value.length > 6) {
         value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
       } else if (value.length > 2) {
@@ -201,61 +201,64 @@
       } else if (value.length > 0) {
         value = `(${value}`;
       }
-      
+
       e.target.value = value;
     });
 
-    function handleCheckout(event) {
+    async function handleCheckout(event) {
       event.preventDefault();
-      
-      // Validação simples
+
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
       const phone = document.getElementById('phone').value.trim();
-      
-      let isValid = true;
-      
-      if (name.length < 3) {
-        document.getElementById('name-error').style.display = 'flex';
-        isValid = false;
-      } else {
-        document.getElementById('name-error').style.display = 'none';
+      const sessionId = sessionStorage.getItem('sessionId');
+      const seats = JSON.parse(sessionStorage.getItem('selectedSeats') || '[]');
+      const reserveToken = sessionStorage.getItem('reserveToken');
+      const price = 70;
+      if (!reserveToken) { alert('Sua seleção expirou. Volte e selecione novamente.'); return; }
+
+      // validações rápidas de formulário
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const phoneOk = phone.replace(/\D/g, '').length >= 10;
+      if (!name || !emailOk || !phoneOk) {
+        document.getElementById('name-error').style.display = name ? 'none' : 'block';
+        document.getElementById('email-error').style.display = emailOk ? 'none' : 'block';
+        document.getElementById('phone-error').style.display = phoneOk ? 'none' : 'block';
+        return;
       }
-      
-      if (!email.includes('@') || !email.includes('.')) {
-        document.getElementById('email-error').style.display = 'flex';
-        isValid = false;
-      } else {
-        document.getElementById('email-error').style.display = 'none';
+
+      const r = await fetch('/api/orders/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, buyer: { name, email, phone }, reserveToken, seats, price })
+      });
+
+      // trata conflito de identidade (telefone atrelado a outro email)
+      if (r.status === 409) {
+        const resp = await r.json();
+        alert(resp.message || 'Conflito: telefone já associado a outro e-mail.');
+        return;
       }
-      
-      if (phone.replace(/\D/g, '').length < 10) {
-        document.getElementById('phone-error').style.display = 'flex';
-        isValid = false;
-      } else {
-        document.getElementById('phone-error').style.display = 'none';
-      }
-      
-      if (!isValid) return;
-      
-      // Salvar dados do comprador
-      sessionStorage.setItem('buyerName', name);
-      sessionStorage.setItem('buyerEmail', email);
-      sessionStorage.setItem('buyerPhone', phone);
-      
-      // Gerar ID do pedido
-      const orderId = 'ORD-' + Date.now();
-      sessionStorage.setItem('orderId', orderId);
-      
-      // Simular redirecionamento para
-      // Em produção, aqui você faria uma chamada para o backend que criaria o pagamento
-      alert('🔄 Redirecionando...\n\n(Esta é uma simulação. Em produção, você seria redirecionado para a página de pagamento)');
-      
-      // Simular retorno bem-sucedido
-      setTimeout(() => {
-        window.location.href = 'sucesso.html';
-      }, 1000);
+
+      const resp = await r.json();
+      if (!resp.ok) { alert(resp.message || 'Erro ao iniciar pagamento'); return; }
+      window.location.href = resp.checkoutUrl;
     }
   </script>
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const orderId = params.get('order_id');
+      if (orderId) {
+        const box = document.createElement('div');
+        box.className = 'alert alert-error';
+        box.style.marginBottom = '16px';
+        box.innerHTML = '<strong>Pagamento não concluído.</strong> Você pode tentar novamente abaixo.';
+        const form = document.querySelector('form'); // seu form de checkout
+        form.parentNode.insertBefore(box, form);
+      }
+    })();
+  </script>
 </body>
+
 </html>

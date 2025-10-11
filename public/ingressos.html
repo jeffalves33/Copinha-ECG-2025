@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Seus ingressos da Copinha ECG">
+  <title>Meus Ingressos • Copinha ECG</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    /* pequenos utilitários para estados */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid var(--color-border);
+      border-top-color: #9bb4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: -3px
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .fade-in {
+      animation: fade .25s ease-out
+    }
+
+    @keyframes fade {
+      from {
+        opacity: .001;
+        transform: translateY(2px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .seat {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: #fff;
+      color: #0b0e13;
+      font-weight: 700;
+      margin: 4px;
+      border: 2px solid #dbe4ff
+    }
+
+    .muted {
+      color: var(--color-text-secondary)
+    }
+
+    .no-print {
+      print-color-adjust: exact
+    }
+
+    @media print {
+      .no-print {
+        display: none
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="index.html" class="logo">Copinha ECG</a>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html">Início</a></li>
+            <li><a class="active" href="ingressos.html">Meus Ingressos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- MEUS INGRESSOS -->
+  <section class="section-lg">
+    <div class="container">
+      <div style="max-width: 900px; margin: 0 auto;">
+        <h1 class="text-center mb-lg">Meus Ingressos</h1>
+
+        <!-- BUSCAR INGRESSOS -->
+        <div class="card" style="margin-bottom: var(--spacing-xl);">
+          <h3 style="margin-bottom: var(--spacing-md);">Buscar por e-mail</h3>
+          <p class="muted" style="margin-bottom: var(--spacing-lg);">
+            Digite o <strong>e-mail usado no checkout</strong> para ver seus ingressos pagos.
+          </p>
+
+          <form id="formTickets" style="display:flex;gap:var(--spacing-md);flex-wrap:wrap" novalidate>
+            <div style="flex:1;min-width:260px">
+              <label for="email" class="muted" style="display:block;margin-bottom:6px">E-mail</label>
+              <input id="email" name="email" type="email" required autocomplete="email" class="form-input"
+                placeholder="voce@exemplo.com" />
+            </div>
+            <div>
+              <button id="btnBuscar" type="submit" class="btn btn-primary">
+                <span class="label">Buscar</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- estado acessível para feedback -->
+          <div id="state" class="muted" style="margin-top:12px" aria-live="polite"></div>
+        </div>
+
+        <!-- LISTA -->
+        <div id="tickets-list"></div>
+
+        <!-- ESTADO VAZIO -->
+        <div id="empty-state" class="card" style="text-align:center;padding:var(--spacing-2xl);display:none">
+          <div style="font-size:4rem;margin-bottom:var(--spacing-md)">🎫</div>
+          <h2 style="margin-bottom:var(--spacing-md)">Nenhum ingresso encontrado</h2>
+          <p class="muted" style="margin-bottom:var(--spacing-xl)">
+            Não encontramos ingressos pagos para este e-mail.
+          </p>
+          <a href="index.html" class="btn btn-primary btn-lg">Comprar Ingressos</a>
+        </div>
+
+        <div class="text-center" style="margin-top:var(--spacing-lg)">
+          <button id="btnPrint" type="button" class="btn btn-secondary no-print">Imprimir / Salvar PDF</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 Copinha ECG. Todos os direitos reservados.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    (function () {
+      const form = document.getElementById('formTickets');
+      const input = document.getElementById('email');
+      const btn = document.getElementById('btnBuscar');
+      const state = document.getElementById('state');
+      const list = document.getElementById('tickets-list');
+      const empty = document.getElementById('empty-state');
+      const btnPrint = document.getElementById('btnPrint');
+
+      // Pré-preenche por ?email= e lembra último e-mail
+      const qsEmail = new URLSearchParams(location.search).get('email');
+      const savedEmail = localStorage.getItem('tickets:lastEmail') || '';
+      if (qsEmail) input.value = qsEmail; else if (savedEmail) input.value = savedEmail;
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // validação nativa do <input type="email" required>
+        if (!input.checkValidity()) { input.reportValidity(); return; } // :contentReference[oaicite:5]{index=5}
+
+        await fetchTickets(input.value.trim().toLowerCase());
+      });
+
+      btnPrint.addEventListener('click', () => window.print());
+
+      if (input.value) { fetchTickets(input.value.trim().toLowerCase()); } // auto-busca se já veio preenchido
+
+      async function fetchTickets(email) {
+        list.innerHTML = '';
+        empty.style.display = 'none';
+        state.innerHTML = '<span class="spinner" aria-hidden="true"></span> Buscando ingressos...';
+
+        // guarda último e-mail pesquisado
+        localStorage.setItem('tickets:lastEmail', email);
+
+        let resp;
+        try {
+          resp = await fetch('/api/tickets?email=' + encodeURIComponent(email));
+        } catch (err) {
+          state.textContent = 'Erro de rede. Tente novamente.';
+          return;
+        }
+
+        // fetch não lança em 4xx/5xx — precisamos checar response.ok/status :contentReference[oaicite:6]{index=6}
+        if (!resp.ok) {
+          state.textContent = 'Erro ao buscar ingressos (' + resp.status + ').';
+          return;
+        }
+
+        const data = await resp.json();
+        if (!data.ok) {
+          state.textContent = data.message || 'Não foi possível obter seus ingressos.';
+          return;
+        }
+
+        state.textContent = '';
+
+        const tickets = data.tickets || [];
+        if (!tickets.length) {
+          empty.style.display = 'block';
+          return;
+        }
+
+        // Agrupa e renderiza
+        tickets.forEach((t, i) => {
+          const card = document.createElement('div');
+          card.className = 'card fade-in';
+          card.style.marginBottom = 'var(--spacing-xl)';
+          card.style.animationDelay = (i * 0.06) + 's';
+
+          const seatsHtml = (t.seats || []).map(code => {
+            // se vier "A-03 (andar 1)", separa visualmente
+            const m = String(code).match(/^([A-Z]+-\d{2})(?:\s*\(andar\s*(\d+)\))?$/i);
+            const label = m ? m[1] : code;
+            const floor = m && m[2] ? ' • Andar ' + m[2] : '';
+            return `<span class="seat" title="${code}">${label}</span>${floor}`;
+          }).join(' ');
+
+          const paidAt = t.paidAt ? new Date(t.paidAt).toLocaleString('pt-BR') : '—';
+
+          card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--spacing-md);margin-bottom:var(--spacing-lg);padding-bottom:var(--spacing-lg);border-bottom:2px solid var(--color-border);flex-wrap:wrap">
+              <div>
+                <h2 style="margin-bottom:var(--spacing-xs)">Pedido ${t.orderId}</h2>
+                <p class="muted" style="margin:0">Pago em ${paidAt}</p>
+              </div>
+              <button class="btn btn-secondary no-print" onclick="window.print()">Imprimir</button>
+            </div>
+
+            <div style="display:grid;gap:10px">
+              <div><strong>Assentos</strong></div>
+              <div>${seatsHtml || '<span class="muted">—</span>'}</div>
+              <div class="muted" style="margin-top:6px">Total: R$ ${Number(t.total || 0).toFixed(2)}</div>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      }
+    })();
+  </script>
+</body>
+
+</html>

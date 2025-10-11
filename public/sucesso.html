@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compre seus ingressos para o evento mais esperado do ano">
+  <title>LuEvents</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="index.html" class="logo">Copinha ECG</a>
+        <nav>
+          <ul class="nav-links">
+            <li><a href="index.html">Início</a></li>
+            <li><a href="ingressos.html">Meus Ingressos</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONFIRMAÇÃO -->
+  <section class="section-lg">
+    <div class="container">
+      <div style="max-width: 700px; margin: 0 auto; text-align: center;">
+        <!-- Ícone de sucesso -->
+        <div
+          style="width: 100px; height: 100px; background-color: var(--color-success); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-xl); font-size: 3rem;">
+          ✓
+        </div>
+
+        <h1 style="color: var(--color-success); margin-bottom: var(--spacing-md);">
+          Compra Confirmada!
+        </h1>
+
+        <p style="font-size: var(--font-size-xl); color: var(--color-text); margin-bottom: var(--spacing-sm);">
+          Seus ingressos foram enviados para o e-mail:
+        </p>
+        <p style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-primary); margin-bottom: var(--spacing-xl);"
+          id="buyer-email">
+          email@exemplo.com
+        </p>
+
+        <div class="alert alert-info" style="text-align: left; margin-bottom: var(--spacing-xl);">
+          <span style="font-size: var(--font-size-xl);">📧</span>
+          <div>
+            <strong>Próximos Passos:</strong><br>
+            1. Verifique sua caixa de entrada (e spam)<br>
+            2. Baixe seus ingressos abaixo ou na área "Meus Ingressos"<br>
+            3. Apresente o QR Code na entrada do evento
+          </div>
+        </div>
+
+        <div
+          style="display: flex; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap; margin-bottom: var(--spacing-2xl);">
+          <a href="ingressos.html" class="btn btn-primary btn-lg">
+            Ver Meus Ingressos
+          </a>
+          <button onclick="downloadAllTickets()" class="btn btn-outline btn-lg">
+            Baixar Todos
+          </button>
+        </div>
+      </div>
+
+      <!-- INGRESSOS -->
+      <div style="max-width: 900px; margin: 0 auto;">
+        <h2 class="text-center mb-lg">Seus Ingressos</h2>
+        <div id="tickets-container" style="display: grid; gap: var(--spacing-lg);">
+          <!-- Ingressos serão inseridos aqui -->
+        </div>
+      </div>
+
+      <!-- COMPRAR MAIS -->
+      <div style="max-width: 600px; margin: var(--spacing-2xl) auto 0; text-align: center;">
+        <div class="card">
+          <h3>Quer ingressos para a outra sessão?</h3>
+          <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg);">
+            Você comprou ingressos para a sessão <strong id="purchased-session">...</strong>.
+            Faça uma nova compra para garantir sua vaga na outra sessão também!
+          </p>
+          <a href="sessao.html" class="btn btn-secondary btn-full">
+            Comprar Mais Ingressos
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 LuEvents. Todos os direitos reservados.</p>
+        <!--<ul class="footer-links">
+          <li><a href="#">Termos de Uso</a></li>
+          <li><a href="#">Política de Privacidade</a></li>
+          <li><a href="#">Contato</a></li>-->
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(location.search);
+      const orderId = params.get('order_id');
+      if (!orderId) { window.location.href = 'index.html'; return; }
+
+      // helpers de UI
+      const ticketsContainer = document.getElementById('tickets-container');
+      const buyerEmailEl = document.getElementById('buyer-email');
+      const purchasedSessionEl = document.getElementById('purchased-session');
+
+      // render
+      function renderTickets(tickets, buyerName) {
+        ticketsContainer.innerHTML = '';
+        tickets.forEach((t, idx) => {
+          const el = document.createElement('div');
+          el.className = 'ticket fade-in';
+          el.style.animationDelay = `${idx * 0.1}s`;
+          el.innerHTML = `
+            <div class="ticket-header">
+              <div class="ticket-info">
+                <h3 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-xs);">
+                  Copinha ECG
+                </h3>
+                <p style="color: var(--color-text-secondary); margin-bottom: 0;">
+                  ${purchasedSessionEl.textContent}
+                </p>
+              </div>
+              <div class="ticket-qr">
+                <svg width="80" height="80" viewBox="0 0 80 80">
+                  <rect width="80" height="80" fill="white"/>
+                  <rect x="10" y="10" width="15" height="15" fill="black"/>
+                  <rect x="55" y="10" width="15" height="15" fill="black"/>
+                  <rect x="10" y="55" width="15" height="15" fill="black"/>
+                  <rect x="30" y="30" width="20" height="20" fill="black"/>
+                  <rect x="35" y="15" width="10" height="10" fill="black"/>
+                  <rect x="15" y="35" width="10" height="10" fill="black"/>
+                  <rect x="55" y="35" width="10" height="10" fill="black"/>
+                  <rect x="35" y="55" width="10" height="10" fill="black"/>
+                </svg>
+              </div>
+            </div>
+            <div class="ticket-details">
+              <div class="ticket-detail">
+                <div class="ticket-detail-label">Assento</div>
+                <div class="ticket-detail-value">${t.code} (andar ${t.floor})</div>
+              </div>
+              <div class="ticket-detail">
+                <div class="ticket-detail-label">Titular</div>
+                <div class="ticket-detail-value">${buyerName}</div>
+              </div>
+              <div class="ticket-detail">
+                <div class="ticket-detail-label">Pedido</div>
+                <div class="ticket-detail-value">${orderId}</div>
+              </div>
+            </div>`
+          ;
+          ticketsContainer.appendChild(el);
+        });
+      }
+
+      async function fetchSummary() {
+        const r = await fetch(`/api/orders/${orderId}/summary`);
+        if (!r.ok) throw new Error('Pedido não encontrado');
+        return r.json();
+      }
+
+      // 1) primeira leitura
+      let summary = await fetchSummary();
+      buyerEmailEl.textContent = summary.order?.buyer?.email || '—';
+
+      // sessão “bonita” no cabeçalho
+      const s = summary.order?.session;
+      if (s?.name) {
+        const label = s.name === '16h' ? 'Sessão da Tarde (16:00)' :
+          s.name === '19h' ? 'Sessão da Noite (19:00)' : s.name;
+        purchasedSessionEl.textContent = label;
+      }
+
+      // 2) se ainda não pagou, faz polling (poucos ciclos)
+      if (summary.order.status !== 'paid') {
+        const infoBox = document.querySelector('.alert.alert-info div');
+        infoBox.innerHTML = '<strong>Processando pagamento...</strong><br>Estamos aguardando a confirmação do Mercado Pago.';
+        let tries = 12; // ~18s
+        while (tries-- && summary.order.status !== 'paid') {
+          await new Promise(r => setTimeout(r, 1500));
+          summary = await fetchSummary();
+        }
+      }
+
+      // 3) render conforme status
+      if (summary.order.status === 'paid') {
+        renderTickets(summary.tickets, summary.order.buyer?.name || '—');
+      } else {
+        // ainda aguardando ou falhou → mostra vazio e deixa CTA para "Meus Ingressos"
+        ticketsContainer.innerHTML = '<p style="text-align:center;color:var(--color-text-secondary)">Pagamento ainda não confirmado. Você pode conferir depois em "Meus Ingressos".</p>';
+      }
+
+      // botão Baixar Todos (apenas imprime a página)
+      window.downloadAllTickets = function () {
+        window.print();
+      };
+    })();
+  </script>
+
+</body>
+
+</html>

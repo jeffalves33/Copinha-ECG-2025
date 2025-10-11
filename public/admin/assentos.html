@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestão de Assentos - Admin</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+
+<body>
+  <header class="admin-header">
+    <div class="container">
+      <div class="admin-header-content">
+        <div class="admin-logo">
+          <h1>📊 Painel Admin</h1>
+        </div>
+        <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container">
+      <ul class="admin-nav-links">
+        <li><a href="index.html">Dashboard</a></li>
+        <li><a href="vendas.html">Vendas</a></li>
+        <li><a href="assentos.html" class="active">Assentos</a></li>
+        <li><a href="usuarios.html">Usuários</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container">
+      <div class="admin-page-header">
+        <h2>Gestão de Assentos</h2>
+        <p>Visualize e gerencie a ocupação dos assentos</p>
+      </div>
+
+      <div class="filters-section">
+        <div class="filters-grid">
+          <div class="form-group">
+            <label for="seatFilterSession" class="form-label">Sessão</label>
+            <select id="seatFilterSession" class="form-select">
+              <option value="16:00">16:00 - Matinê</option>
+              <option value="19:00">19:00 - Noturna</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="seatFilterFloor" class="form-label">Andar</label>
+            <select id="seatFilterFloor" class="form-select">
+              <option value="1">Térreo</option>
+              <option value="2">Mezanino</option>
+              <option value="3">Superior</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="seatSearch" class="form-label">Buscar Assento</label>
+            <input type="text" id="seatSearch" class="form-input" placeholder="Ex: A1, B5..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Estatísticas da Seleção Atual</h3>
+        <div class="seat-stats-grid">
+          <div class="seat-stat-card available">
+            <div class="seat-stat-icon">✅</div>
+            <div class="seat-stat-content">
+              <div class="seat-stat-label">Disponíveis</div>
+              <div class="seat-stat-value" id="availableCount">0</div>
+            </div>
+          </div>
+
+          <div class="seat-stat-card occupied">
+            <div class="seat-stat-icon">🎫</div>
+            <div class="seat-stat-content">
+              <div class="seat-stat-label">Vendidos</div>
+              <div class="seat-stat-value" id="occupiedCount">0</div>
+            </div>
+          </div>
+
+          <div class="seat-stat-card reserved">
+            <div class="seat-stat-icon">⏳</div>
+            <div class="seat-stat-content">
+              <div class="seat-stat-label">Reservados</div>
+              <div class="seat-stat-value" id="reservedCount">0</div>
+            </div>
+          </div>
+
+          <div class="seat-stat-card total">
+            <div class="seat-stat-icon">📊</div>
+            <div class="seat-stat-content">
+              <div class="seat-stat-label">Total</div>
+              <div class="seat-stat-value" id="totalCount">100</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="section-header-with-action">
+          <h3>Lista de Assentos</h3>
+          <div class="seat-legend">
+            <span class="legend-item">
+              <span class="legend-color available"></span>
+              Disponível
+            </span>
+            <span class="legend-item">
+              <span class="legend-color occupied"></span>
+              Vendido
+            </span>
+            <span class="legend-item">
+              <span class="legend-color reserved"></span>
+              Reservado
+            </span>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Assento</th>
+                <th>Fileira</th>
+                <th>Status</th>
+                <th>Cliente</th>
+                <th>ID Pedido</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="seatsTable">
+              <tr>
+                <td colspan="6" class="table-empty">Carregando assentos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    // auth
+    AdminAuth.checkAuth();
+
+    // carregar assentos
+    AdminSeats.loadSeats();
+
+    // filtros
+    document.getElementById('seatFilterSession').addEventListener('change', AdminSeats.applyFilters);
+    document.getElementById('seatFilterFloor').addEventListener('change', AdminSeats.applyFilters);
+    document.getElementById('seatSearch').addEventListener('input', AdminSeats.applyFilters);
+
+    // logout
+    document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+  </script>
+
+</body>
+
+</html>

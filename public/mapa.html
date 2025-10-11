@@ -165,7 +165,7 @@
     const TICKET_PRICE = 70.00; // mantenha se já existir
     const selectedSession = sessionStorage.getItem('selectedSession');
     if (!selectedSession) window.location.href = 'sessao.html';
-    document.getElementById('selected-session-display').textContent = selectedSession === '15h' ? 'Sessão da Tarde - 15:00' : 'Sessão da Noite - 19:00';
+    document.getElementById('selected-session-display').textContent = selectedSession === '16h' ? 'Sessão da Tarde - 16:00' : 'Sessão da Noite - 19:00';
 
     // ==========================
     // CONFIGURAÇÃO DO MAPA POR ANDAR
@@ -245,26 +245,50 @@
     const flattenMid = 0.82;
 
     // ==========================
-    // ESTADO
+    // GERAÇÃO DE DADOS 
     // ==========================
-    let selectedSeats = [];
-    const seatData = {}; // { "A-01": {row:'A', numAcross:1, status:'available'} }
+    const sessionId = sessionStorage.getItem('sessionId');
+    if (!sessionId) { window.location.href = 'sessao.html'; }
 
-    // ==========================
-    // GERAÇÃO DE DADOS (simulação de ocupado/reservado)
-    // ==========================
-    function generateSeatData() {
-      ROWS_DEF.forEach(row => {
-        const totalAcross = row.blocks.reduce((a, b) => a + b, 0);
-        for (let i = 1; i <= totalAcross; i++) {
-          const id = `${row.id}-${String(i).padStart(2, '0')}`;
-          const rnd = Math.random();
-          let status = 'available';
-          if (rnd < 0.15) status = 'occupied';
-          else if (rnd < 0.20) status = 'reserved';
-          seatData[id] = { row: row.id, numAcross: i, status };
-        }
+    let reserveToken = sessionStorage.getItem('reserveToken') || null;
+    let selectedSeats = [];
+    const seatData = {}; // { "A-01": { status: 'available' | 'reserved' | 'sold' } }
+
+    // Carrega status dos assentos do backend
+    async function loadSeatsFromApi() {
+      const r = await fetch(`/api/seats?sessionId=${sessionId}&floor=${andar}`);
+      const data = await r.json(); // [{code:'A-01', status:'available'}, ...]
+      data.forEach(s => { seatData[s.code] = { status: s.status }; });
+    }
+
+    // Tenta segurar (hold) um assento no backend
+    async function holdSeat(code) {
+      const r = await fetch('/api/seats/hold', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, floor: andar, seats: [code], ttlSec: 600, reserveToken: reserveToken || null })
       });
+      const resp = await r.json();
+      if (resp.ok) {
+        reserveToken = resp.reserveToken;
+        sessionStorage.setItem('reserveToken', reserveToken);
+        seatData[code].status = 'reserved'; // reservado POR VOCÊ
+        return true;
+      } else {
+        alert(`Assento indisponível: ${resp.conflicts?.join(', ') || code}`);
+        return false;
+      }
+    }
+
+    // Libera (release) um assento no backend
+    async function releaseSeat(code) {
+      if (!reserveToken) return;
+      await fetch('/api/seats/release', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, reserveToken, seats: [code] })
+      });
+      seatData[code].status = 'available';
     }
 
     // ==========================
@@ -441,27 +465,33 @@
       return { available: 'Livre', selected: 'Selecionado', occupied: 'Ocupado', reserved: 'Reservado' }[s] || s;
     }
 
-    function toggleSeat(seatId, seatGroupEl) {
-      // 👉 Se for vaga de cadeirante, só mostra o modal de atenção
-      if (WHEELCHAIR.has(seatId)) {
-        openWheelchairModal(seatId);    // função do item 2
+    async function toggleSeat(seatId, seatGroupEl) {
+      // acessível: mantém seu modal
+      if (WHEELCHAIR.has(seatId)) { openWheelchairModal(seatId); return; }
+
+      const status = seatData[seatId]?.status || 'available';
+
+      // não deixa clicar em ocupado/vendido
+      if (status === 'occupied' || status === 'sold' || status === 'reserved' && !seatGroupEl.classList.contains('selected')) {
+        // 'reserved' pode ser por outro usuário; no seu desenho já aparece amarelo
         return;
       }
 
-      const data = seatData[seatId];
-      if (!data || data.status === 'occupied' || data.status === 'reserved') return;
-
-      if (selectedSeats.includes(seatId)) {
+      if (seatGroupEl.classList.contains('selected')) {
+        // desmarcar → release no backend
+        await releaseSeat(seatId);
         selectedSeats = selectedSeats.filter(id => id !== seatId);
         seatGroupEl.classList.remove('selected');
         seatGroupEl.classList.add('available');
-        data.status = 'available';
       } else {
+        // marcar → hold no backend
+        const ok = await holdSeat(seatId);
+        if (!ok) return;
         selectedSeats.push(seatId);
         seatGroupEl.classList.remove('available');
         seatGroupEl.classList.add('selected');
-        data.status = 'selected';
       }
+
       updateSummary();
     }
 
@@ -493,17 +523,25 @@
       document.getElementById('wc-modal').style.display = 'none';
     }
 
-    function confirmWheelchairSeat() {
+    async function confirmWheelchairSeat() {
       if (!pendingWheelchairSeat) return;
 
       const seatId = pendingWheelchairSeat;
       const seatGroupEl = document.querySelector(`[data-seat-id="${seatId}"]`);
 
-      // marca como selecionado
+      // tenta HOLD no backend, como qualquer assento
+      const ok = await holdSeat(seatId);
+      if (!ok) { // alguém pegou no meio do caminho
+        closeWheelchairModal();
+        pendingWheelchairSeat = null;
+        return;
+      }
+
+      // marcou com sucesso
       selectedSeats.push(seatId);
       seatGroupEl.classList.remove('available');
       seatGroupEl.classList.add('selected');
-      seatData[seatId].status = 'selected';
+      seatData[seatId].status = 'reserved'; // refletir o backend
 
       updateSummary();
       closeWheelchairModal();
@@ -513,9 +551,12 @@
     // ==========================
     // BOOT
     // ==========================
-    generateSeatData();
-    generateSeatMap();
-    updateSummary();
+    (async function boot() {
+      await loadSeatsFromApi();   // <-- carrega status reais
+      generateSeatMap();          // redesenha já com status
+      updateSummary();
+    })();
+
   </script>
 
 </body>

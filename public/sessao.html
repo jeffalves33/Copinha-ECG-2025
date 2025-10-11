@@ -57,7 +57,7 @@
 
       <div class="grid grid-2" style="max-width: 900px; margin: 0 auto;">
         <!-- Sessão 16h -->
-        <div class="card card-interactive" id="session-15h" onclick="selectSession('15h')">
+        <div class="card card-interactive" id="session-16h" onclick="selectSession('16h')">
           <div class="card-header">
             <div
               style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
@@ -66,11 +66,11 @@
             </div>
             <p class="card-subtitle mb-0"
               style="font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-text);">
-              15:00
+              16:00
             </p>
           </div>
           <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg);">
-            14 de dezembro às 15:00<br>
+            14 de dezembro às 16:00<br>
             Duração aproximada: 2 horas
           </p>
           <div
@@ -164,26 +164,7 @@
   </footer>
 
   <script src="assets/js/app.js"></script>
-  <script>
-    function selectSession(session) {
-      // Salvar sessão selecionada
-      sessionStorage.setItem('selectedSession', session);
-
-      // Redirecionar para o mapa de assentos
-      window.location.href = 'andar.html?session=' + session;
-    }
-
-    // Destacar sessão se vier da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const preselectedSession = urlParams.get('session');
-    if (preselectedSession) {
-      const card = document.getElementById('session-' + preselectedSession);
-      if (card) {
-        card.style.borderColor = 'var(--color-primary)';
-        card.style.boxShadow = 'var(--shadow-lg)';
-      }
-    }
-  </script>
+  <script src="assets/js/sessao.js"></script>
 </body>
 
 </html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Admin - Sistema de Ingressos</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+
+<body>
+  <header class="admin-header">
+    <div class="container">
+      <div class="admin-header-content">
+        <div class="admin-logo">
+          <h1>📊 Painel Admin</h1>
+        </div>
+        <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container">
+      <ul class="admin-nav-links">
+        <li><a href="index.html" class="active">Dashboard</a></li>
+        <li><a href="vendas.html">Vendas</a></li>
+        <li><a href="assentos.html">Assentos</a></li>
+        <li><a href="usuarios.html">Usuários</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container">
+      <div class="admin-page-header">
+        <h2>Visão Geral</h2>
+        <p>Resumo das vendas e estatísticas do evento</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-content">
+            <div class="stat-label">Receita Total</div>
+            <div class="stat-value" id="totalRevenue">R$ 0,00</div>
+            <div class="stat-change positive">+12% vs. ontem</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">🎫</div>
+          <div class="stat-content">
+            <div class="stat-label">Ingressos Vendidos</div>
+            <div class="stat-value" id="totalSold">0</div>
+            <div class="stat-change positive">+8 hoje</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-content">
+            <div class="stat-label">Disponíveis</div>
+            <div class="stat-value" id="totalAvailable">0</div>
+            <div class="stat-change neutral">de 300 total</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-content">
+            <div class="stat-label">Reservados</div>
+            <div class="stat-value" id="totalReserved">0</div>
+            <div class="stat-change neutral">temporariamente</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Vendas por Sessão</h3>
+        <div class="session-stats-grid">
+          <div class="session-stat-card">
+            <div class="session-stat-header">
+              <h4>Sessão 16:00</h4>
+              <span class="badge badge-primary">Matinê</span>
+            </div>
+            <div class="session-stat-body">
+              <div class="session-stat-item">
+                <span class="session-stat-label">Vendidos:</span>
+                <span class="session-stat-value" id="session15Sold">0</span>
+              </div>
+              <div class="session-stat-item">
+                <span class="session-stat-label">Disponíveis:</span>
+                <span class="session-stat-value" id="session15Available">150</span>
+              </div>
+              <div class="session-stat-item">
+                <span class="session-stat-label">Receita:</span>
+                <span class="session-stat-value" id="session15Revenue">R$ 0,00</span>
+              </div>
+            </div>
+            <div class="progress-bar-simple">
+              <div class="progress-fill" id="session15Progress" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="session-stat-card">
+            <div class="session-stat-header">
+              <h4>Sessão 19:00</h4>
+              <span class="badge badge-primary">Noturna</span>
+            </div>
+            <div class="session-stat-body">
+              <div class="session-stat-item">
+                <span class="session-stat-label">Vendidos:</span>
+                <span class="session-stat-value" id="session19Sold">0</span>
+              </div>
+              <div class="session-stat-item">
+                <span class="session-stat-label">Disponíveis:</span>
+                <span class="session-stat-value" id="session19Available">150</span>
+              </div>
+              <div class="session-stat-item">
+                <span class="session-stat-label">Receita:</span>
+                <span class="session-stat-value" id="session19Revenue">R$ 0,00</span>
+              </div>
+            </div>
+            <div class="progress-bar-simple">
+              <div class="progress-fill" id="session19Progress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Vendas por Andar</h3>
+        <div class="floor-stats-grid">
+          <div class="floor-stat-card">
+            <div class="floor-stat-icon">🏢</div>
+            <div class="floor-stat-content">
+              <h4>Térreo</h4>
+              <div class="floor-stat-value" id="floorTerreaSold">0 vendidos</div>
+              <div class="floor-stat-revenue" id="floorTerreaRevenue">R$ 0,00</div>
+            </div>
+          </div>
+
+          <div class="floor-stat-card">
+            <div class="floor-stat-icon">🎭</div>
+            <div class="floor-stat-content">
+              <h4>Mezanino</h4>
+              <div class="floor-stat-value" id="floorMezaninoSold">0 vendidos</div>
+              <div class="floor-stat-revenue" id="floorMezaninoRevenue">R$ 0,00</div>
+            </div>
+          </div>
+
+          <div class="floor-stat-card">
+            <div class="floor-stat-icon">⭐</div>
+            <div class="floor-stat-content">
+              <h4>Superior</h4>
+              <div class="floor-stat-value" id="floorSuperiorSold">0 vendidos</div>
+              <div class="floor-stat-revenue" id="floorSuperiorRevenue">R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Análise Financeira</h3>
+        <div class="financial-grid">
+          <div class="financial-card">
+            <div class="financial-label">Receita Bruta</div>
+            <div class="financial-value" id="grossRevenue">R$ 0,00</div>
+          </div>
+          <div class="financial-card">
+            <div class="financial-label">Taxa Mercado Pago (4,99% + R$0,49)</div>
+            <div class="financial-value negative" id="mpFees">- R$ 0,00</div>
+          </div>
+          <div class="financial-card">
+            <div class="financial-label">Receita Líquida</div>
+            <div class="financial-value positive" id="netRevenue">R$ 0,00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="section-header-with-action">
+          <h3>Últimas Vendas</h3>
+          <a href="vendas.html" class="btn btn-secondary">Ver Todas</a>
+        </div>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Sessão</th>
+                <th>Andar</th>
+                <th>Assentos</th>
+                <th>Valor</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody id="recentSalesTable">
+              <tr>
+                <td colspan="7" class="table-empty">Nenhuma venda registrada ainda</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    // auth
+    AdminAuth.checkAuth();
+
+    // dados do dashboard
+    AdminDashboard.loadDashboard();
+
+    // logout
+    document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);
+  </script>
+
+</body>
+
+</html>

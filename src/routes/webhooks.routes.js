@@ -34,7 +34,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
             const pay = await getPayment(id);
             const isApproved = pay.status === 'approved';
 
-            // Usamos external_reference para encontrar seu pedido (você setou external_reference = orderId na preference)
+            // external_reference -> orderId
             const orderId = String(pay.external_reference || '');
             if (!orderId) return res.sendStatus(200);
 
@@ -49,8 +49,19 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
 
             if (isApproved) {
                 // 3) marcar pedido como pago e salvar payment id
+                // Derivar método e parcelas a partir do Payment:
+                const method = pay.payment_method_id === 'pix' || pay.payment_type_id === 'bank_transfer' ? 'pix' : 'card';
+                const installments = Number(pay.installments || 1);
+
+                // Atualiza status + provider_payment_id + método e parcelas
                 await supabase.from('orders')
-                    .update({ status: 'paid', paid_at: new Date().toISOString(), provider_payment_id: String(pay.id) })
+                    .update({
+                        status: 'paid',
+                        paid_at: new Date().toISOString(),
+                        provider_payment_id: String(pay.id),
+                        payment_method: method,
+                        installments: installments
+                    })
                     .eq('id', order.id);
 
                 // 4) seats do pedido -> sold
@@ -89,13 +100,26 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
             if (merchantOrderIsPaid(mo)) {
                 // tenta pegar um payment aprovado para salvar o id (útil p/ estorno)
                 const approved = (mo.payments || []).find(p => p.status === 'approved');
-                const paymentId = approved ? String(approved.id) : null;
+                let paymentId = approved ? String(approved.id) : null;
+                // Tenta buscar o Payment para saber método e parcelas
+                let method = null, installments = 1;
+                if (paymentId) {
+                    try {
+                        const fullPay = await getPayment(paymentId);
+                        method = fullPay.payment_method_id === 'pix' || fullPay.payment_type_id === 'bank_transfer' ? 'pix' : 'card';
+                        installments = Number(fullPay.installments || 1);
+                    } catch (e) {
+                        // se falhar, seguimos com defaults
+                    }
+                }
 
                 await supabase.from('orders')
                     .update({
                         status: 'paid',
                         paid_at: new Date().toISOString(),
-                        provider_payment_id: paymentId
+                        provider_payment_id: paymentId,
+                        payment_method: method || 'card',
+                        installments: installments
                     })
                     .eq('id', order.id);
 

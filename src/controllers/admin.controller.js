@@ -1,5 +1,6 @@
 const { supabase } = require('../services/supabase');
 const { computeFees } = require('../services/fees');
+const { computeFeesFromOrders } = require('../services/fees');
 const { toCSV } = require('../services/csv');
 const { refundPayment } = require('../services/mercadoPagoRefund.service');
 
@@ -39,19 +40,34 @@ async function getDashboardMetrics(req, res, next) {
             if (error) throw error;
             counts[st] = count || 0;
         }
-        // (count exato via header é o caminho oficial) :contentReference[oaicite:2]{index=2}
 
         // 2) receita e quantidade de pagamentos via RPC (evita 'sum' no select)
-        const { data: agg, error: aggErr } = await supabase.rpc('admin_orders_agg', {
-            p_session_id: sessionId
+        let oq = supabase
+            .from('orders')
+            .select('id,total_amount,payment_method,installments,status,session_id')
+            .eq('status', 'paid');
+        if (sessionId) oq = oq.eq('session_id', sessionId);
+
+        const { data: ords, error: oerr } = await oq;
+        if (oerr) throw oerr;
+
+        const { gross, net, fees } = computeFeesFromOrders(ords || []);
+        res.json({
+            ok: true,
+            seats: counts,
+            revenue: {
+                gross,
+                net,
+                fees: { total: fees.total },
+                feesBreakdown: {
+                    card_mdr: fees.card_mdr,
+                    pix_mdr: fees.pix_mdr,
+                    installment: fees.installment,
+                    fixed: fees.fixed,
+                    counts: fees.counts
+                }
+            }
         });
-        if (aggErr) throw aggErr;
-
-        const gross = Number(agg?.[0]?.gross || 0);
-        const paymentsCount = Number(agg?.[0]?.payments || 0);
-
-        const fees = computeFees(gross, paymentsCount);
-        const net = Math.max(gross - fees.total, 0);
 
         res.json({ ok: true, seats: counts, revenue: { gross, fees, net } });
     } catch (e) { next(e); }
@@ -63,7 +79,7 @@ async function listSales(req, res, next) {
         const sessionId = await resolveSessionId(raw);
 
         let q = supabase.from('orders')
-            .select('id,total_amount,paid_at,session_id,status,user_id, user:user_id(name,email,phone,cpf)')
+            .select('id,total_amount,paid_at,session_id,status,user_id,payment_method,installments, user:user_id(name,email,phone,cpf)')
             .eq('status', 'paid')
             .order('paid_at', { ascending: false });
 
@@ -100,7 +116,9 @@ async function listSales(req, res, next) {
             seats: (byOrder[o.id] || []),
             total: Number(o.total_amount || 0),
             paidAt: o.paid_at,
-            sessionId: o.session_id
+            sessionId: o.session_id,
+            method: (o.payment_method || '').toUpperCase() || 'CARD',
+            installments: Number(o.installments || 1)
         }));
 
         if (search) {

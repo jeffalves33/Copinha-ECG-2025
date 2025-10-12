@@ -45,16 +45,16 @@
           <div class="stat-content">
             <div class="stat-label">Receita Total</div>
             <div class="stat-value" id="totalRevenue">R$ 0,00</div>
-            <div class="stat-change positive">+12% vs. ontem</div>
+            <!--<div class="stat-change positive">+12% vs. ontem</div>-->
           </div>
         </div>
 
         <div class="stat-card">
           <div class="stat-icon">🎫</div>
           <div class="stat-content">
-            <div class="stat-label">Ingressos Vendidos</div>
+            <div class="stat-label">Vendidos</div>
             <div class="stat-value" id="totalSold">0</div>
-            <div class="stat-change positive">+8 hoje</div>
+            <!--<div class="stat-change positive">+8 hoje</div>-->
           </div>
         </div>
 
@@ -63,7 +63,7 @@
           <div class="stat-content">
             <div class="stat-label">Disponíveis</div>
             <div class="stat-value" id="totalAvailable">0</div>
-            <div class="stat-change neutral">de 300 total</div>
+            <!--<div class="stat-change neutral">de 1304 total</div>-->
           </div>
         </div>
 
@@ -72,7 +72,7 @@
           <div class="stat-content">
             <div class="stat-label">Reservados</div>
             <div class="stat-value" id="totalReserved">0</div>
-            <div class="stat-change neutral">temporariamente</div>
+            <!--<div class="stat-change neutral">temporariamente</div>-->
           </div>
         </div>
       </div>
@@ -170,8 +170,10 @@
             <div class="financial-value" id="grossRevenue">R$ 0,00</div>
           </div>
           <div class="financial-card">
-            <div class="financial-label">Taxa Mercado Pago (4,99% + R$0,49)</div>
+            <div class="financial-label">Taxas Mercado Pago</div>
             <div class="financial-value negative" id="mpFees">- R$ 0,00</div>
+            <div id="mpFeesBreakdown" class="muted" style="margin-top:6px; line-height:1.3;">
+            </div>
           </div>
           <div class="financial-card">
             <div class="financial-label">Receita Líquida</div>

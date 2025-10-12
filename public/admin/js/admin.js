@@ -65,6 +65,18 @@ const AdminDashboard = {
       el('mpFees', '- ' + fmtBRL(d.revenue?.fees?.total || 0));
       el('netRevenue', fmtBRL(d.revenue?.net || 0));
 
+      const bd = d.revenue?.feesBreakdown || {};
+      const elBD = qs('#mpFeesBreakdown');
+      if (elBD) {
+        const parts = [];
+        if (bd.card_mdr) parts.push(`Cartão (4,98%): ${fmtBRL(bd.card_mdr)}`);
+        if (bd.pix_mdr) parts.push(`Pix (0,99%): ${fmtBRL(bd.pix_mdr)}`);
+        if (bd.installment) parts.push(`Parcelamento (vendedor): ${fmtBRL(bd.installment)}`);
+        if (bd.fixed) parts.push(`Tarifa fixa: ${fmtBRL(bd.fixed)}`);
+        elBD.innerHTML = parts.length ? parts.join(' • ') : '—';
+      }
+
+
       // (opcional) se você quiser popular os blocos por sessão/andar aqui,
       // crie um endpoint /api/admin/metrics/by-session e preencha:
       // el('session15Sold', ...); el('session15Available', ...); el('session15Revenue', ...); etc.
@@ -98,15 +110,18 @@ const AdminSales = {
       return;
     }
     tbody.innerHTML = items.map(it => {
-      const seats = it.seats.map(s => `${s.code} (andar ${s.floor})`).join(', ');
+      const seats = it.seats.map(s => `${s.code}`).join(', ');
       const paidAt = it.paidAt ? new Date(it.paidAt).toLocaleString('pt-BR') : '-';
+      const seat = it.sessionId === '54ee68e2-defa-44b2-8e93-b3ef990a6e52' ? '16h' : '19h';
       return `<tr>
         <td>${it.id}</td>
         <td>${it.buyer}</td>
-        <td>${it.contact} ${it.userCpf ? ' • CPF ' + it.userCpf : ''}</td>
-        <td>${it.sessionId || '-'}</td>
+        <td>${it.contact} ${it.userCpf ? it.userCpf : ''}</td>
+        <td>${seat}</td>
         <td>${[...new Set(it.seats.map(s => s.floor))].join(', ')}</td>
         <td>${seats}</td>
+        <td>${it.method || '-'}</td>
+        <td>${it.installments || 1}x</td>
         <td>${fmtBRL(it.total)}</td>
         <td>${paidAt}</td>
         <td>
@@ -167,7 +182,16 @@ const AdminSeats = {
     // tabela
     const tbody = qs('#seatsTable');
     if (!tbody) return;
-    tbody.innerHTML = (items || []).map(row => {
+
+    // Ordenação dos assentos
+    const sorted = (items || []).sort((a, b) => {
+      const [la, na] = a.seat.split('-');
+      const [lb, nb] = b.seat.split('-');
+      if (la === lb) return parseInt(na, 10) - parseInt(nb, 10);
+      return la.localeCompare(lb);
+    });
+
+    tbody.innerHTML = sorted.map(row => {
       const badge = row.status === 'available' ? 'Disponível' :
         row.status === 'reserved' ? 'Reservado' : 'Vendido';
       const actions = row.status === 'reserved'
@@ -221,14 +245,14 @@ const AdminUsers = {
       box.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👤</div><h4>Nenhum resultado</h4></div>`;
       return;
     }
-    box.innerHTML = items.map(u => `
+    box.innerHTML = items.map(user => `
       <div class="card" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div>
-            <strong>${u.name || '—'}</strong><br/>
-            <span class="muted">${user.email} • ${user.phone || ''} • CPF ${user.cpf || ''}</span>
+            <strong>${user.name || '—'}</strong><br/>
+            <span class="muted">e-mail: ${user.email} <br/> telefone: ${user.phone || ''} <br/> CPF: ${user.cpf || ''}</span>
           </div>
-          <button class="btn btn-secondary" onclick="AdminUsers.open('${u.id}')">Ver detalhes</button>
+          <button class="btn btn-secondary" onclick="AdminUsers.open('${user.id}')">Ver detalhes</button>
         </div>
       </div>
     `).join('');

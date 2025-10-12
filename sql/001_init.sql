@@ -89,6 +89,9 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method text;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS installments int DEFAULT 1;
+
 -- Order Items
 CREATE TABLE IF NOT EXISTS order_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

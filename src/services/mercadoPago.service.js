@@ -32,7 +32,7 @@ async function createCheckoutPreference({ orderId, buyer, items }) {
                     failure: `${process.env.FRONTEND_URL}/checkout.html?order_id=${orderId}`,
                 },
                 auto_return: 'approved',
-                notification_url: `${process.env.BASE_URL}/api/webhooks/mercado-pago`,
+                notification_url: `${process.env.FRONTEND_URL}/api/webhooks/mercado-pago`,
                 metadata: {
                     order_id: orderId,
                     buyer_email: buyer.email,

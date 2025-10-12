@@ -8,18 +8,18 @@ async function checkout(req, res, next) {
         const { sessionId, buyer, reserveToken, seats, price } = req.body;
 
         // 1) validação simples
-        if (!buyer?.email || !buyer?.phone || !buyer?.name) {
-            return res.status(400).json({ ok: false, message: 'Dados do comprador incompletos.' });
+        if (!buyer?.name || !buyer?.cpf || !buyer?.phone) {
+            return res.status(400).json({ ok: false, message: 'Informe nome, CPF e telefone.' });
         }
 
         // 2) Achar ou criar usuário com regras de unicidade
         let userId;
         try {
-            const u = await getOrCreateUser(buyer);
+            const u = await getOrCreateUser(buyer); // { name, email?, phone, cpf }
             userId = u.id;
         } catch (e) {
-            if (e.status === 409) {
-                return res.status(409).json({ ok: false, message: e.message });
+            if (e.status === 409 || e.status === 400) {
+                return res.status(e.status).json({ ok: false, message: e.message });
             }
             throw e;
         }
@@ -27,9 +27,9 @@ async function checkout(req, res, next) {
         // 3) upsert do usuário
         const { data: user, error: uerr } = await supabase
             .from('users')
-            .upsert([{ email: buyer.email, phone: buyer.phone || null, name: buyer.name }], { onConflict: 'email' })
-            .select('id')
-            .single();
+            .update({ name: buyer.name, email: buyer.email, phone: buyer.phone })
+            .eq('id', userId);
+
         if (uerr) throw uerr;
 
         // 2) validar assentos pertencem ao token e não expiraram
@@ -45,14 +45,19 @@ async function checkout(req, res, next) {
         const wanted = new Set(seats);
         const found = new Set((seatRows || []).map(s => `${s.row_label}-${String(s.seat_number).padStart(2, '0')}`));
         const allOk = seats.every(c => found.has(c));
-        if (!allOk) throw new Error('Algum assento expirou ou não está reservado por este token.');
+        if (!allOk) {
+            return res.status(409).json({
+                ok: false,
+                message: 'Algum assento expirou ou não está reservado por este token.'
+            });
+        }
 
         // 3) criar pedido
         const total = Number(price) * seats.length;
         const { data: order, error: oerr } = await supabase
             .from('orders')
             .insert([{
-                user_id: user.id,
+                user_id: userId,
                 session_id: sessionId,
                 status: 'awaiting_payment',
                 total_amount: total,
@@ -61,6 +66,7 @@ async function checkout(req, res, next) {
             }])
             .select('id')
             .single();
+
         if (oerr) throw oerr;
 
         // 4) criar itens + (opcional) sombra do TTL

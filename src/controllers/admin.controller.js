@@ -63,7 +63,7 @@ async function listSales(req, res, next) {
         const sessionId = await resolveSessionId(raw);
 
         let q = supabase.from('orders')
-            .select('id,total_amount,paid_at,session_id,status,user_id, user:user_id(name,email,phone)')
+            .select('id,total_amount,paid_at,session_id,status,user_id, user:user_id(name,email,phone,cpf)')
             .eq('status', 'paid')
             .order('paid_at', { ascending: false });
 
@@ -96,6 +96,7 @@ async function listSales(req, res, next) {
             id: o.id,
             buyer: o.user?.name || '—',
             contact: `${o.user?.email || ''} ${o.user?.phone || ''}`.trim(),
+            userCpf: o.user?.cpf || null,
             seats: (byOrder[o.id] || []),
             total: Number(o.total_amount || 0),
             paidAt: o.paid_at,
@@ -220,8 +221,8 @@ async function searchUsers(req, res, next) {
         // busca por nome/email/phone
         const { data: users, error } = await supabase
             .from('users')
-            .select('id,name,email,phone')
-            .or(`email_canonical.ilike.%${raw}%,name.ilike.%${raw}%,phone_digits.ilike.%${raw}%`)
+            .select('id,name,email,phone,cpf')
+            .or(`email_canonical.ilike.%${raw}%,name.ilike.%${raw}%,phone_digits.ilike.%${raw}%,cpf_digits.ilike.%${raw}%`)
             .limit(50);
 
         if (error) throw error;

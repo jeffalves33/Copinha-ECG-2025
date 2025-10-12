@@ -1,92 +1,107 @@
+// src/services/user.service.js
 const { supabase } = require('./supabase');
 
-function toDigits(phone) {
-    return (phone || '').replace(/\D/g, '');
-}
-function toCanonical(email) {
-    return (email || '').trim().toLowerCase();
+// normalizações
+function onlyDigits(v) { return (v || '').replace(/\D/g, ''); }
+function toCanonicalEmail(email) { return (email || '').trim().toLowerCase(); }
+
+// valida CPF (módulo 11, 2 dígitos)
+function isValidCPF(raw) {
+    const cpf = onlyDigits(raw);
+    if (!cpf || cpf.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cpf)) return false; // rejeita repetidos 000.. 111.. etc.
+
+    // 1º dígito
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += Number(cpf[i]) * (10 - i);
+    let rest = (sum * 10) % 11;
+    if (rest === 10) rest = 0;
+    if (rest !== Number(cpf[9])) return false;
+
+    // 2º dígito
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += Number(cpf[i]) * (11 - i);
+    rest = (sum * 10) % 11;
+    if (rest === 10) rest = 0;
+    return rest === Number(cpf[10]);
 }
 
 /**
- * Regras:
- * - Busca por email_canonical OU phone_digits.
- * - Se achou 0 -> cria.
- * - Se achou 1 -> retorna o existente; se vier novo nome/telefone, atualiza (opcional).
- * - Se achou 1 mas telefone pertence a outro email divergente -> 409.
- * - Se achou >1 (incomum) -> 409 pedindo para usar o mesmo email/telefone.
+ * NOVA regra de identidade:
+ * - CPF e Telefone são obrigatórios e únicos.
+ * - E-mail pode repetir.
+ * - Se CPF e Telefone apontarem para usuários diferentes -> 409 claro informando o campo divergente.
  */
-async function getOrCreateUser({ name, email, phone }) {
-    const emailC = toCanonical(email);
-    const phoneD = toDigits(phone);
+async function getOrCreateUser({ name, email, phone, cpf }) {
+    const cpfD = onlyDigits(cpf);
+    const phoneD = onlyDigits(phone);
+    const emailC = toCanonicalEmail(email);
 
-    // busca por qualquer um dos dois
-    const { data: found, error: ferr } = await supabase
+    // validações básicas
+    if (!cpfD || !isValidCPF(cpfD)) {
+        const err = new Error('CPF inválido. Verifique os 11 dígitos.');
+        err.status = 400; throw err;
+    }
+    if (!phoneD || phoneD.length < 10) {
+        const err = new Error('Telefone inválido. Informe DDD + número.');
+        err.status = 400; throw err;
+    }
+
+    // busca por cpf e por telefone separadamente
+    const { data: byCPF, error: e1 } = await supabase
+        .from('users').select('id, phone_digits').eq('cpf_digits', cpfD).maybeSingle();
+    if (e1) throw e1;
+
+    const { data: byPhone, error: e2 } = await supabase
+        .from('users').select('id, cpf_digits').eq('phone_digits', phoneD).maybeSingle();
+    if (e2) throw e2;
+
+    // conflitos explícitos
+    if (byCPF && byPhone && byCPF.id !== byPhone.id) {
+        const err = new Error('Telefone e CPF pertencem a usuários diferentes. Verifique qual dado está incorreto.');
+        err.status = 409; throw err;
+    }
+    if (byCPF && byPhone && byCPF.id === byPhone.id) {
+        return { id: byCPF.id }; // mesmo usuário => OK
+    }
+
+    if (byCPF && !byPhone) {
+        // CPF existe, telefone não: só permitir se o CPF ainda não tem telefone ou for o mesmo
+        await supabase.from('users').update({ phone }).eq('id', byCPF.id);
+        return { id: byCPF.id };
+    }
+
+    if (!byCPF && byPhone) {
+        // Telefone existe (com outro CPF) => não permitir
+        const err = new Error('Telefone já cadastrado com outro CPF. Corrija o telefone.');
+        err.status = 409; throw err;
+    }
+
+    // nenhum existe => cria novo
+    const { data: ins, error: ierr } = await supabase
         .from('users')
-        .select('id, name, email, phone, email_canonical, phone_digits')
-        .or(`email_canonical.eq.${emailC},phone_digits.eq.${phoneD}`);
+        .insert([{ name, email: emailC, phone, cpf }])
+        .select('id')
+        .single();
 
-    if (ferr) throw ferr;
-
-    if (!found || found.length === 0) {
-        // cria novo
-        const { data: ins, error: ierr } = await supabase
-            .from('users')
-            .insert([{ name, email: emailC, phone }])
-            .select('id')
-            .single();
-        if (ierr) {
-            // pode ter batido em UNIQUE por corrida -> tenta buscar de novo
-            if (ierr.code === '23505') {
-                const { data: again } = await supabase
-                    .from('users')
-                    .select('id')
-                    .or(`email_canonical.eq.${emailC},phone_digits.eq.${phoneD}`)
-                    .limit(1)
-                    .single();
-                if (again) return again;
+    if (ierr) {
+        // corrida de índice único: tenta descobrir qual campo conflitou
+        if (ierr.code === '23505') {
+            const { data: againCPF } = await supabase.from('users').select('id').eq('cpf_digits', cpfD).maybeSingle();
+            if (againCPF) {
+                const err = new Error('CPF já cadastrado. Corrija o CPF.');
+                err.status = 409; throw err;
             }
-            throw ierr;
+            const { data: againPhone } = await supabase.from('users').select('id').eq('phone_digits', phoneD).maybeSingle();
+            if (againPhone) {
+                const err = new Error('Telefone já cadastrado. Corrija o telefone.');
+                err.status = 409; throw err;
+            }
         }
-        return ins;
+        throw ierr;
     }
 
-    if (found.length > 1) {
-        // situação inconsistente: pegue o que bate por email e verifique
-        const byEmail = found.find(u => u.email_canonical === emailC);
-        if (byEmail) return byEmail;
-        const byPhone = found.find(u => u.phone_digits === phoneD);
-        if (byPhone && byPhone.email_canonical !== emailC) {
-            const err = new Error('Este telefone já está associado a outro e-mail. Use o mesmo e-mail ou outro telefone.');
-            err.status = 409;
-            throw err;
-        }
-        const err = new Error('Conflito de identidade. Use o mesmo e-mail/telefone desta compra.');
-        err.status = 409;
-        throw err;
-    }
-
-    // found.length === 1
-    const u = found[0];
-
-    // se telefone pertence a um usuário com email diferente (incomum aqui), bloqueia
-    if (u.phone_digits && u.email_canonical !== emailC && u.phone_digits === phoneD) {
-        const err = new Error('Este telefone já está associado a outro e-mail. Use o mesmo e-mail ou outro telefone.');
-        err.status = 409;
-        throw err;
-    }
-
-    // opcional: atualizar nome/telefone se mudou
-    const needsUpdate =
-        (name && name !== u.name) ||
-        (phone && toDigits(u.phone || '') !== phoneD);
-
-    if (needsUpdate) {
-        await supabase.from('users')
-            .update({ name, phone })
-            .eq('id', u.id);
-    }
-
-    return { id: u.id };
+    return ins; // { id }
 }
 
-module.exports = { getOrCreateUser, toCanonical, toDigits };
+module.exports = { getOrCreateUser, isValidCPF, onlyDigits, toCanonicalEmail };

@@ -1,7 +1,7 @@
 // services/mercadoPago.service.js
 require('dotenv').config();
 const { MercadoPagoConfig, Preference, Payment, MerchantOrder } = require('mercadopago');
-const mp = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
+const mercadopago = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN });
 
 // Cria uma preferência de checkout do Mercado Pago
 async function createCheckoutPreference({ orderId, buyer, items }) {
@@ -12,7 +12,7 @@ async function createCheckoutPreference({ orderId, buyer, items }) {
                     title: `Ingresso Copinha ECG`,
                     quantity: 1,
                     currency_id: 'BRL',
-                    unit_price: 1,//Number(it.price),
+                    unit_price: Number(it.price),
                     category_id: "services",
                     description: "Quantidade de ingressos para evento Copinha ECG"
                 })),
@@ -54,12 +54,12 @@ async function createCheckoutPreference({ orderId, buyer, items }) {
 
 // Busca detalhes de uma ordem (merchant order)
 async function getPayment(id) {
-    return await new Payment(mp).get({ id });
+    return await new Payment(mercadopago).get({ id });
 }
 
 async function getMerchantOrder(id) {
     // v2: merchant order é outro recurso
-    return await new MerchantOrder(mp).get({ merchantOrderId: id });
+    return await new MerchantOrder(mercadopago).get({ merchantOrderId: id });
 }
 
 module.exports = { createCheckoutPreference, getMerchantOrder, getPayment };

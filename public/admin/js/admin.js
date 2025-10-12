@@ -103,7 +103,7 @@ const AdminSales = {
       return `<tr>
         <td>${it.id}</td>
         <td>${it.buyer}</td>
-        <td>${it.contact}</td>
+        <td>${it.contact} ${it.userCpf ? ' • CPF ' + it.userCpf : ''}</td>
         <td>${it.sessionId || '-'}</td>
         <td>${[...new Set(it.seats.map(s => s.floor))].join(', ')}</td>
         <td>${seats}</td>
@@ -226,7 +226,7 @@ const AdminUsers = {
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div>
             <strong>${u.name || '—'}</strong><br/>
-            <span class="muted">${u.email || ''} ${u.phone ? ' • ' + u.phone : ''}</span>
+            <span class="muted">${user.email} • ${user.phone || ''} • CPF ${user.cpf || ''}</span>
           </div>
           <button class="btn btn-secondary" onclick="AdminUsers.open('${u.id}')">Ver detalhes</button>
         </div>

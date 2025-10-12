@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text UNIQUE,
+  cpf text UNIQUE SET NOT NULL,
   phone text,
   name text,
   qr_payload text,
@@ -9,6 +10,41 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+
+-- 2) coluna gerada só com dígitos do CPF (normalização)
+--    usar regexp_replace é uma prática comum no Postgres para normalizar entradas. 
+--    (ex: remover não-dígitos)  :contentReference[oaicite:1]{index=1}
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS cpf_digits text
+  GENERATED ALWAYS AS (regexp_replace(coalesce(cpf,''), '\D', '', 'g')) STORED;
+
+ALTER TABLE public.users
+ADD COLUMN IF NOT EXISTS cpf_digits   text GENERATED ALWAYS AS (regexp_replace(coalesce(cpf,''),   '\D', '', 'g')) STORED,
+ADD COLUMN IF NOT EXISTS phone_digits text GENERATED ALWAYS AS (regexp_replace(coalesce(phone,''), '\D', '', 'g')) STORED,
+ADD COLUMN IF NOT EXISTS email_canonical text GENERATED ALWAYS AS (lower(coalesce(email,''))) STORED;
+-- 4) unicidade obrigatória de CPF e telefone (em dígitos)
+CREATE UNIQUE INDEX IF NOT EXISTS users_cpf_digits_key   ON public.users (cpf_digits);
+CREATE UNIQUE INDEX IF NOT EXISTS users_phone_digits_key ON public.users (phone_digits);
+-- 5) (opcional) checks simples de formato:
+-- CPF sempre 11 dígitos / telefone 10..13 (ex.: 5511999999999)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'users_cpf_digits_len'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_cpf_digits_len CHECK (char_length(cpf_digits)=11);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'users_phone_digits_len'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_phone_digits_len CHECK (char_length(phone_digits) BETWEEN 10 AND 13);
+  END IF;
+END$$;
 
 -- Sessions (16h e 19h)
 CREATE TABLE IF NOT EXISTS sessions (

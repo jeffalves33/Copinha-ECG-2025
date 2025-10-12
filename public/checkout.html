@@ -125,6 +125,15 @@
                 </div>
               </div>
 
+              <div class="form-group">
+                <label for="cpf" class="form-label">CPF *</label>
+                <input type="text" id="cpf" class="form-input" placeholder="000.000.000-00" required
+                  aria-required="true" autocomplete="off">
+                <div class="form-error" id="cpf-error" style="display: none;">
+                  ⚠️ Por favor, digite um CPF válido
+                </div>
+              </div>
+
               <div class="alert alert-info" style="margin-bottom: var(--spacing-lg);">
                 <div>
                   <span style="font-size: var(--font-size-xl);">🔒</span>
@@ -205,43 +214,75 @@
       e.target.value = value;
     });
 
+    // Máscara de cpf simples
+    document.getElementById('cpf').addEventListener('input', function (e) {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length > 11) value = value.slice(0, 11);
+
+      if (value.length > 9) {
+        value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9)}`;
+      } else if (value.length > 6) {
+        value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6)}`;
+      } else if (value.length > 3) {
+        value = `${value.slice(0, 3)}.${value.slice(3)}`;
+      }
+      e.target.value = value;
+    });
+
+    function onlyDigits(v) { return (v || '').replace(/\D/g, ''); }
+
+    function isValidCPF(raw) {
+      const cpf = onlyDigits(raw);
+      if (!cpf || cpf.length !== 11) return false;
+      if (/^(\d)\1{10}$/.test(cpf)) return false;
+      let sum = 0, rest;
+      for (let i = 0; i < 9; i++) sum += Number(cpf[i]) * (10 - i);
+      rest = (sum * 10) % 11; if (rest === 10) rest = 0;
+      if (rest !== Number(cpf[9])) return false;
+      sum = 0;
+      for (let i = 0; i < 10; i++) sum += Number(cpf[i]) * (11 - i);
+      rest = (sum * 10) % 11; if (rest === 10) rest = 0;
+      return rest === Number(cpf[10]);
+    }
+
     async function handleCheckout(event) {
       event.preventDefault();
 
       const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();
+      const email = document.getElementById('email').value.trim();    // opcional na validação de identidade
       const phone = document.getElementById('phone').value.trim();
+      const cpf = document.getElementById('cpf').value.trim();
+      const cpfOk = isValidCPF(cpf);
+      const phoneOk = onlyDigits(phone).length >= 10;
+
+      document.getElementById('cpf-error').style.display = cpfOk ? 'none' : 'block';
+      document.getElementById('phone-error').style.display = phoneOk ? 'none' : 'block';
+      document.getElementById('name-error').style.display = name ? 'none' : 'block';
+
+      if (!name || !cpfOk || !phoneOk) return;
+
       const sessionId = sessionStorage.getItem('sessionId');
       const seats = JSON.parse(sessionStorage.getItem('selectedSeats') || '[]');
       const reserveToken = sessionStorage.getItem('reserveToken');
       const price = 70;
-      if (!reserveToken) { alert('Sua seleção expirou. Volte e selecione novamente.'); return; }
-
-      // validações rápidas de formulário
-      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      const phoneOk = phone.replace(/\D/g, '').length >= 10;
-      if (!name || !emailOk || !phoneOk) {
-        document.getElementById('name-error').style.display = name ? 'none' : 'block';
-        document.getElementById('email-error').style.display = emailOk ? 'none' : 'block';
-        document.getElementById('phone-error').style.display = phoneOk ? 'none' : 'block';
-        return;
-      }
 
       const r = await fetch('/api/orders/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, buyer: { name, email, phone }, reserveToken, seats, price })
+        body: JSON.stringify({
+          sessionId,
+          buyer: { name, email, phone, cpf },  // << envia CPF
+          reserveToken, seats, price
+        })
       });
 
-      // trata conflito de identidade (telefone atrelado a outro email)
-      if (r.status === 409) {
-        const resp = await r.json();
-        alert(resp.message || 'Conflito: telefone já associado a outro e-mail.');
+      if (!r.ok) {
+        const resp = await r.json().catch(() => ({}));
+        alert(resp.message || 'Não foi possível iniciar o pagamento.');
         return;
       }
-
       const resp = await r.json();
-      if (!resp.ok) { alert(resp.message || 'Erro ao iniciar pagamento'); return; }
+      if (!resp.ok) { alert(resp.message || 'Erro no checkout.'); return; }
       window.location.href = resp.checkoutUrl;
     }
   </script>

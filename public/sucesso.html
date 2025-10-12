@@ -29,15 +29,17 @@
   <section class="section-lg">
     <div class="container">
       <div style="max-width: 700px; margin: 0 auto; text-align: center;">
-        <!-- Ícone de sucesso -->
-        <div
-          style="width: 100px; height: 100px; background-color: var(--color-success); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-xl); font-size: 3rem;">
-          ✓
+        <!-- STATUS HEADER (dinâmico) -->
+        <div id="statusIcon" style="width: 100px; height: 100px; background-color: var(--color-border);
+         border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center;
+         margin: 0 auto var(--spacing-xl); font-size: 2.2rem; color: var(--color-text-secondary);">
+          ⏳
         </div>
 
-        <h1 style="color: var(--color-success); margin-bottom: var(--spacing-md);">
-          Compra Confirmada!
+        <h1 id="statusTitle" style="margin-bottom: var(--spacing-md);">
+          Aguardando confirmação do pagamento…
         </h1>
+
 
         <p style="font-size: var(--font-size-xl); color: var(--color-text); margin-bottom: var(--spacing-sm);">
           Seus ingressos foram enviados para o e-mail:
@@ -57,38 +59,32 @@
           </div>
         </div>
 
-        <div
-          style="display: flex; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap; margin-bottom: var(--spacing-2xl);">
-          <a href="ingressos.html" class="btn btn-primary btn-lg">
-            Ver Meus Ingressos
-          </a>
-          <button onclick="downloadAllTickets()" class="btn btn-outline btn-lg">
-            Baixar Todos
-          </button>
+        <div id="actionsRow"
+          style="display:none; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap; margin-bottom: var(--spacing-2xl);">
+          <a href="ingressos.html" class="btn btn-primary btn-lg">Ver Meus Ingressos</a>
+          <button onclick="downloadAllTickets()" class="btn btn-outline btn-lg">Baixar Todos</button>
         </div>
       </div>
 
       <!-- INGRESSOS -->
-      <div style="max-width: 900px; margin: 0 auto;">
+      <div id="ticketsBlock" style="display:none; max-width: 900px; margin: 0 auto;">
         <h2 class="text-center mb-lg">Seus Ingressos</h2>
-        <div id="tickets-container" style="display: grid; gap: var(--spacing-lg);">
-          <!-- Ingressos serão inseridos aqui -->
-        </div>
+        <div id="tickets-container" style="display: grid; gap: var(--spacing-lg);"></div>
       </div>
 
       <!-- COMPRAR MAIS -->
-      <div style="max-width: 600px; margin: var(--spacing-2xl) auto 0; text-align: center;">
+      <div id="buyMoreBlock"
+        style="display:none; max-width: 600px; margin: var(--spacing-2xl) auto 0; text-align: center;">
         <div class="card">
           <h3>Quer ingressos para a outra sessão?</h3>
           <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-lg);">
             Você comprou ingressos para a sessão <strong id="purchased-session">...</strong>.
             Faça uma nova compra para garantir sua vaga na outra sessão também!
           </p>
-          <a href="sessao.html" class="btn btn-secondary btn-full">
-            Comprar Mais Ingressos
-          </a>
+          <a href="sessao.html" class="btn btn-secondary btn-full">Comprar Mais Ingressos</a>
         </div>
       </div>
+
     </div>
   </section>
 
@@ -107,18 +103,60 @@
   </footer>
 
   <script src="assets/js/app.js"></script>
+  <script src="assets/js/app.js"></script>
   <script>
     (async function () {
       const params = new URLSearchParams(location.search);
       const orderId = params.get('order_id');
       if (!orderId) { window.location.href = 'index.html'; return; }
 
-      // helpers de UI
+      // refs de UI
+      const statusIcon = document.getElementById('statusIcon');
+      const statusTitle = document.getElementById('statusTitle');
+      const infoBox = document.querySelector('.alert.alert-info div');
+      const actionsRow = document.getElementById('actionsRow');
+      const ticketsBlock = document.getElementById('ticketsBlock');
+      const buyMoreBlock = document.getElementById('buyMoreBlock');
       const ticketsContainer = document.getElementById('tickets-container');
       const buyerEmailEl = document.getElementById('buyer-email');
       const purchasedSessionEl = document.getElementById('purchased-session');
 
-      // render
+      function setPendingUI() {
+        // ícone neutro + título aguardando
+        statusIcon.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--color-border') || '#2a3242';
+        statusIcon.style.color = 'var(--color-text-secondary)';
+        statusIcon.style.fontSize = '2.2rem';
+        statusIcon.textContent = '⏳';
+        statusTitle.style.color = 'var(--color-text)';
+        statusTitle.textContent = 'Aguardando confirmação do pagamento…';
+        // esconde CTAs e ingressos
+        actionsRow.style.display = 'none';
+        ticketsBlock.style.display = 'none';
+        buyMoreBlock.style.display = 'none';
+        // mensagem
+        if (infoBox) {
+          infoBox.innerHTML = '<strong>Processando pagamento…</strong><br>Estamos aguardando a confirmação do Mercado Pago. Esta página vai atualizar automaticamente.';
+        }
+      }
+
+      function setSuccessUI() {
+        // ícone verde + título sucesso
+        statusIcon.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--color-success') || '#16a34a';
+        statusIcon.style.color = '#fff';
+        statusIcon.style.fontSize = '3rem';
+        statusIcon.textContent = '✓';
+        statusTitle.style.color = 'var(--color-success)';
+        statusTitle.textContent = 'Compra Confirmada!';
+        // mostra CTAs e ingressos
+        actionsRow.style.display = 'flex';
+        ticketsBlock.style.display = 'block';
+        buyMoreBlock.style.display = 'block';
+        // mensagem
+        if (infoBox) {
+          infoBox.innerHTML = '<strong>Próximos Passos:</strong><br>1. Verifique sua caixa de entrada (e spam)<br>2. Baixe seus ingressos abaixo ou na área "Meus Ingressos"<br>3. Apresente o QR Code na entrada do evento';
+        }
+      }
+
       function renderTickets(tickets, buyerName) {
         ticketsContainer.innerHTML = '';
         tickets.forEach((t, idx) => {
@@ -126,44 +164,39 @@
           el.className = 'ticket fade-in';
           el.style.animationDelay = `${idx * 0.1}s`;
           el.innerHTML = `
-            <div class="ticket-header">
-              <div class="ticket-info">
-                <h3 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-xs);">
-                  Copinha ECG
-                </h3>
-                <p style="color: var(--color-text-secondary); margin-bottom: 0;">
-                  ${purchasedSessionEl.textContent}
-                </p>
-              </div>
-              <div class="ticket-qr">
-                <svg width="80" height="80" viewBox="0 0 80 80">
-                  <rect width="80" height="80" fill="white"/>
-                  <rect x="10" y="10" width="15" height="15" fill="black"/>
-                  <rect x="55" y="10" width="15" height="15" fill="black"/>
-                  <rect x="10" y="55" width="15" height="15" fill="black"/>
-                  <rect x="30" y="30" width="20" height="20" fill="black"/>
-                  <rect x="35" y="15" width="10" height="10" fill="black"/>
-                  <rect x="15" y="35" width="10" height="10" fill="black"/>
-                  <rect x="55" y="35" width="10" height="10" fill="black"/>
-                  <rect x="35" y="55" width="10" height="10" fill="black"/>
-                </svg>
-              </div>
+          <div class="ticket-header">
+            <div class="ticket-info">
+              <h3 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-xs);">Copinha ECG</h3>
+              <p style="color: var(--color-text-secondary); margin-bottom: 0;">${purchasedSessionEl.textContent}</p>
             </div>
-            <div class="ticket-details">
-              <div class="ticket-detail">
-                <div class="ticket-detail-label">Assento</div>
-                <div class="ticket-detail-value">${t.code} (andar ${t.floor})</div>
-              </div>
-              <div class="ticket-detail">
-                <div class="ticket-detail-label">Titular</div>
-                <div class="ticket-detail-value">${buyerName}</div>
-              </div>
-              <div class="ticket-detail">
-                <div class="ticket-detail-label">Pedido</div>
-                <div class="ticket-detail-value">${orderId}</div>
-              </div>
-            </div>`
-          ;
+            <div class="ticket-qr">
+              <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
+                <rect width="80" height="80" fill="white"/>
+                <rect x="10" y="10" width="15" height="15" fill="black"/>
+                <rect x="55" y="10" width="15" height="15" fill="black"/>
+                <rect x="10" y="55" width="15" height="15" fill="black"/>
+                <rect x="30" y="30" width="20" height="20" fill="black"/>
+                <rect x="35" y="15" width="10" height="10" fill="black"/>
+                <rect x="15" y="35" width="10" height="10" fill="black"/>
+                <rect x="55" y="35" width="10" height="10" fill="black"/>
+                <rect x="35" y="55" width="10" height="10" fill="black"/>
+              </svg>
+            </div>
+          </div>
+          <div class="ticket-details">
+            <div class="ticket-detail">
+              <div class="ticket-detail-label">Assento</div>
+              <div class="ticket-detail-value">${t.code} (andar ${t.floor})</div>
+            </div>
+            <div class="ticket-detail">
+              <div class="ticket-detail-label">Titular</div>
+              <div class="ticket-detail-value">${buyerName}</div>
+            </div>
+            <div class="ticket-detail">
+              <div class="ticket-detail-label">Pedido</div>
+              <div class="ticket-detail-value">${orderId}</div>
+            </div>
+          </div>`;
           ticketsContainer.appendChild(el);
         });
       }
@@ -174,11 +207,13 @@
         return r.json();
       }
 
-      // 1) primeira leitura
+      // ===== fluxo =====
+      setPendingUI(); // começa SEMPRE aguardando
+
       let summary = await fetchSummary();
       buyerEmailEl.textContent = summary.order?.buyer?.email || '—';
 
-      // sessão “bonita” no cabeçalho
+      // nome da sessão legível
       const s = summary.order?.session;
       if (s?.name) {
         const label = s.name === '16h' ? 'Sessão da Tarde (16:00)' :
@@ -186,31 +221,28 @@
         purchasedSessionEl.textContent = label;
       }
 
-      // 2) se ainda não pagou, faz polling (poucos ciclos)
-      if (summary.order.status !== 'paid') {
-        const infoBox = document.querySelector('.alert.alert-info div');
-        infoBox.innerHTML = '<strong>Processando pagamento...</strong><br>Estamos aguardando a confirmação do Mercado Pago.';
-        let tries = 12; // ~18s
-        while (tries-- && summary.order.status !== 'paid') {
-          await new Promise(r => setTimeout(r, 1500));
-          summary = await fetchSummary();
+      // polling curto (ex.: ~20s)
+      let tries = 14; // 14 * 1500ms ≈ 21s
+      while (summary.order.status !== 'paid' && tries-- > 0) {
+        await new Promise(r => setTimeout(r, 1500));
+        summary = await fetchSummary();
+      }
+
+      if (summary.order.status === 'paid') {
+        setSuccessUI();
+        renderTickets(summary.tickets, summary.order.buyer?.name || '—');
+      } else {
+        // permanece aguardando; nada de “compra confirmada”
+        if (infoBox) {
+          infoBox.innerHTML = '<strong>Aguardando confirmação…</strong><br>Se você ainda não concluiu o pagamento, volte à aba do Mercado Pago para finalizar. Você também poderá conferir depois em "Meus Ingressos".';
         }
       }
 
-      // 3) render conforme status
-      if (summary.order.status === 'paid') {
-        renderTickets(summary.tickets, summary.order.buyer?.name || '—');
-      } else {
-        // ainda aguardando ou falhou → mostra vazio e deixa CTA para "Meus Ingressos"
-        ticketsContainer.innerHTML = '<p style="text-align:center;color:var(--color-text-secondary)">Pagamento ainda não confirmado. Você pode conferir depois em "Meus Ingressos".</p>';
-      }
-
-      // botão Baixar Todos (apenas imprime a página)
-      window.downloadAllTickets = function () {
-        window.print();
-      };
+      // imprimir
+      window.downloadAllTickets = function () { window.print(); };
     })();
   </script>
+
 
 </body>
 

@@ -264,7 +264,7 @@
       const sessionId = sessionStorage.getItem('sessionId');
       const seats = JSON.parse(sessionStorage.getItem('selectedSeats') || '[]');
       const reserveToken = sessionStorage.getItem('reserveToken');
-      const price = 70;
+      const price = 1;
 
       const r = await fetch('/api/orders/checkout', {
         method: 'POST',

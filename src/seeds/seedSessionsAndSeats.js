@@ -69,7 +69,7 @@ function expandRow(row) {
 
     // mapear nome->id
     const map = new Map(up.map(s => [s.name, s.id]));
-    const price = 70;
+    const price = 1;
 
     for (const sessionName of ['16h', '19h']) {
         const session_id = map.get(sessionName);

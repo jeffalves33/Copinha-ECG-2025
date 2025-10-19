@@ -103,7 +103,7 @@
   </footer>
 
   <script src="assets/js/app.js"></script>
-  <script src="assets/js/app.js"></script>
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     (async function () {
       const params = new URLSearchParams(location.search);
@@ -164,42 +164,42 @@
           el.className = 'ticket fade-in';
           el.style.animationDelay = `${idx * 0.1}s`;
           el.innerHTML = `
-          <div class="ticket-header">
-            <div class="ticket-info">
-              <h3 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-xs);">Copinha ECG</h3>
-              <p style="color: var(--color-text-secondary); margin-bottom: 0;">${purchasedSessionEl.textContent}</p>
+            <div class="ticket-header">
+              <div class="ticket-info">
+                <h3 style="font-size: var(--font-size-2xl); margin-bottom: var(--spacing-xs);">Copinha ECG</h3>
+                <p style="color: var(--color-text-secondary); margin-bottom: 0;">${purchasedSessionEl.textContent}</p>
+              </div>
+              <div class="ticket-qr" style="display:flex;align-items:center;gap:10px">
+                <canvas id="qr-s-${idx}" width="80" height="80" style="background:#fff;padding:4px;border-radius:8px"></canvas>
+                ${t.qrToken ? `<a href="/api/tickets/TKT1:${t.qrToken}/pdf" class="btn btn-secondary">Baixar PDF</a>` : '<span class="muted">PDF em breve</span>'}
+              </div>
             </div>
-            <div class="ticket-qr">
-              <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
-                <rect width="80" height="80" fill="white"/>
-                <rect x="10" y="10" width="15" height="15" fill="black"/>
-                <rect x="55" y="10" width="15" height="15" fill="black"/>
-                <rect x="10" y="55" width="15" height="15" fill="black"/>
-                <rect x="30" y="30" width="20" height="20" fill="black"/>
-                <rect x="35" y="15" width="10" height="10" fill="black"/>
-                <rect x="15" y="35" width="10" height="10" fill="black"/>
-                <rect x="55" y="35" width="10" height="10" fill="black"/>
-                <rect x="35" y="55" width="10" height="10" fill="black"/>
-              </svg>
+            <div class="ticket-details">
+              <div class="ticket-detail">
+                <div class="ticket-detail-label">Assento</div>
+                <div class="ticket-detail-value">${t.code} (andar ${t.floor})</div>
+              </div>
+              <div class="ticket-detail">
+                <div class="ticket-detail-label">Titular</div>
+                <div class="ticket-detail-value">${buyerName}</div>
+              </div>
+              <div class="ticket-detail">
+                <div class="ticket-detail-label">Pedido</div>
+                <div class="ticket-detail-value">${orderId}</div>
+              </div>
             </div>
-          </div>
-          <div class="ticket-details">
-            <div class="ticket-detail">
-              <div class="ticket-detail-label">Assento</div>
-              <div class="ticket-detail-value">${t.code} (andar ${t.floor})</div>
-            </div>
-            <div class="ticket-detail">
-              <div class="ticket-detail-label">Titular</div>
-              <div class="ticket-detail-value">${buyerName}</div>
-            </div>
-            <div class="ticket-detail">
-              <div class="ticket-detail-label">Pedido</div>
-              <div class="ticket-detail-value">${orderId}</div>
-            </div>
-          </div>`;
+          `;
           ticketsContainer.appendChild(el);
+
+          // QR real
+          const token = t.qrToken ? `TKT1:${t.qrToken}` : 'TKT1:PENDENTE';
+          const canvas = el.querySelector(`#qr-s-${idx}`);
+          if (window.QRCode) {
+            QRCode.toCanvas(canvas, token, { width: 80, margin: 0 }, (err) => { if (err) console.error(err); });
+          }
         });
       }
+
 
       async function fetchSummary() {
         const r = await fetch(`/api/orders/${orderId}/summary`);

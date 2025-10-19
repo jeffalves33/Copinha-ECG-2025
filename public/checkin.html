@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Check-in • Admin</title>
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <style>
+        .scan-wrap {
+            max-width: 960px;
+            margin: 20px auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px
+        }
+
+        @media(max-width:900px) {
+            .scan-wrap {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .ticket-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 6px 0;
+            padding: 8px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a class="logo" href="index.html">Admin</a>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="index.html">Dashboard</a></li>
+                        <li><a class="active" href="checkin.html">Check-in</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <section class="section-lg">
+        <div class="container">
+            <h1>Check-in</h1>
+
+            <div class="scan-wrap">
+                <div class="card">
+                    <h3>Leitor</h3>
+                    <div id="reader" style="width:100%"></div>
+                    <div style="margin-top:10px">
+                        <input id="manual" class="form-input" placeholder="Cole o código TKT1:..." />
+                        <button id="btnManual" class="btn btn-secondary" style="margin-top:8px">Buscar</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Resultado</h3>
+                    <div id="result"></div>
+                    <div id="actions" style="margin-top:12px;display:none">
+                        <button id="btnConfirm" class="btn btn-primary">Confirmar selecionados</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="../assets/js/app.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script>
+        (async function () {
+            const result = document.getElementById('result');
+            const actions = document.getElementById('actions');
+            const btnConfirm = document.getElementById('btnConfirm');
+
+            function renderScan(r) {
+                if (!r.ok) {
+                    result.innerHTML = `<div class="alert alert-error">Falha: ${r.reason || r.message || 'inválido'}</div>`;
+                    actions.style.display = 'none';
+                    return;
+                }
+                const buyer = r.buyer || {};
+                const order = r.order || {};
+                const tks = r.tickets || [];
+
+                result.innerHTML = `
+      <div class="card" style="margin-bottom:10px">
+        <strong>${buyer.name || '—'}</strong><br/>
+        <span class="muted">${buyer.email || ''} ${buyer.phone ? ' • ' + buyer.phone : ''}</span><br/>
+        <span class="muted">Pedido ${order.id || ''}</span>
+      </div>
+      <div id="ticketList"></div>
+    `;
+
+                const list = document.getElementById('ticketList');
+                list.innerHTML = tks.map(t => `
+      <label class="ticket-line">
+        <div><strong>${t.code}</strong> • Andar ${t.floor} ${t.checkedInAt ? `<span class="muted">• usado ${new Date(t.checkedInAt).toLocaleString('pt-BR')}</span>` : ''}</div>
+        <div>
+          ${t.checkedInAt ? '<span class="muted">Já usado</span>' : `<input type="checkbox" class="tkchk" value="${t.token}">`}
+        </div>
+      </label>
+    `).join('');
+
+                actions.style.display = 'block';
+            }
+
+            async function scanToken(token) {
+                const r = await fetch('/api/admin/checkin/scan', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token })
+                }).then(r => r.json()).catch(() => ({ ok: false, message: 'Erro de rede' }));
+                renderScan(r);
+            }
+
+            // leitor via câmera
+            const html5QrCode = new Html5Qrcode("reader");
+            Html5Qrcode.getCameras().then(devs => {
+                if (devs && devs.length) {
+                    html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 240, height: 240 } },
+                        (text) => { scanToken(text); }
+                    );
+                } else {
+                    document.getElementById('reader').innerHTML = '<div class="muted">Câmera não disponível</div>';
+                }
+            }).catch(() => { document.getElementById('reader').innerHTML = '<div class="muted">Câmera não disponível</div>'; });
+
+            // manual
+            document.getElementById('btnManual').onclick = () => {
+                const v = document.getElementById('manual').value.trim();
+                if (v) scanToken(v);
+            };
+
+            // confirmar selecionados
+            btnConfirm.onclick = async () => {
+                const sel = Array.from(document.querySelectorAll('.tkchk:checked')).map(i => i.value);
+                if (!sel.length) return;
+                const r = await fetch('/api/admin/checkin/confirm', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokens: sel, by: 'Portaria' })
+                }).then(r => r.json()).catch(() => ({ ok: false }));
+                if (r.ok) {
+                    alert('Confirmados: ' + (r.confirmed || []).length);
+                    // re-scan para atualizar estado
+                    const last = sel[0];
+                    scanToken(last);
+                } else {
+                    alert('Falha ao confirmar');
+                }
+            };
+        })();
+    </script>
+</body>
+
+</html>

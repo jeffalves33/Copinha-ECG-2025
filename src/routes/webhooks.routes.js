@@ -3,6 +3,29 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../services/supabase');
 const { getMerchantOrder, getPayment } = require('../services/mercadoPago.service');
+const crypto = require('crypto');
+
+async function ensureQrTokensForOrder(orderId) {
+    const { data: items, error } = await supabase
+        .from('order_items')
+        .select('id, qr_token')
+        .eq('order_id', orderId);
+
+    if (error || !items?.length) return;
+
+    const updates = [];
+    for (const it of items) {
+        if (!it.qr_token) {
+            updates.push({
+                id: it.id,
+                qr_token: crypto.randomBytes(16).toString('base64url') // 128 bits, único o suficiente
+            });
+        }
+    }
+    if (updates.length) {
+        await supabase.from('order_items').upsert(updates).select('id');
+    }
+}
 
 // Util: soma pagamentos aprovados na merchant order
 function merchantOrderIsPaid(mo) {
@@ -64,6 +87,8 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                     })
                     .eq('id', order.id);
 
+                await ensureQrTokensForOrder(order.id);
+
                 // 4) seats do pedido -> sold
                 const { data: items } = await supabase
                     .from('order_items')
@@ -122,6 +147,8 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                         installments: installments
                     })
                     .eq('id', order.id);
+
+                await ensureQrTokensForOrder(order.id);
 
                 const { data: items } = await supabase
                     .from('order_items')

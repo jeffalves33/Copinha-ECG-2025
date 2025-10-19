@@ -131,9 +131,9 @@
           <a href="index.html" class="btn btn-primary btn-lg">Comprar Ingressos</a>
         </div>
 
-        <div class="text-center" style="margin-top:var(--spacing-lg)">
+        <!--<div class="text-center" style="margin-top:var(--spacing-lg)">
           <button id="btnPrint" type="button" class="btn btn-secondary no-print">Imprimir / Salvar PDF</button>
-        </div>
+        </div>-->
       </div>
     </div>
   </section>
@@ -148,103 +148,113 @@
   </footer>
 
   <script src="assets/js/app.js"></script>
+  <!-- QR gerado no cliente (sem build) -->
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     (function () {
       const form = document.getElementById('formTickets');
       const input = document.getElementById('email');
-      const btn = document.getElementById('btnBuscar');
       const state = document.getElementById('state');
       const list = document.getElementById('tickets-list');
       const empty = document.getElementById('empty-state');
-      const btnPrint = document.getElementById('btnPrint');
+      //const btnPrint = document.getElementById('btnPrint');
 
-      // Pré-preenche por ?email= e lembra último e-mail
+      // estilos de chip (evitar texto cortado)
+      const seatChipStyle = 'display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:999px;background:#fff;color:#0b0e13;font-weight:700;margin:4px;border:2px solid #dbe4ff;white-space:nowrap;';
+
       const qsEmail = new URLSearchParams(location.search).get('email');
       const savedEmail = localStorage.getItem('tickets:lastEmail') || '';
       if (qsEmail) input.value = qsEmail; else if (savedEmail) input.value = savedEmail;
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        // validação nativa do <input type="email" required>
-        if (!input.checkValidity()) { input.reportValidity(); return; } // :contentReference[oaicite:5]{index=5}
-
+        if (!input.checkValidity()) { input.reportValidity(); return; }
         await fetchTickets(input.value.trim().toLowerCase());
       });
 
-      btnPrint.addEventListener('click', () => window.print());
-
-      if (input.value) { fetchTickets(input.value.trim().toLowerCase()); } // auto-busca se já veio preenchido
+      //btnPrint.addEventListener('click', () => window.print());
+      if (input.value) fetchTickets(input.value.trim().toLowerCase());
 
       async function fetchTickets(email) {
         list.innerHTML = '';
         empty.style.display = 'none';
-        state.innerHTML = '<span class="spinner" aria-hidden="true"></span> Buscando ingressos...';
-
-        // guarda último e-mail pesquisado
+        state.innerHTML = '<span class="spinner"></span> Buscando ingressos...';
         localStorage.setItem('tickets:lastEmail', email);
 
-        let resp;
-        try {
-          resp = await fetch('/api/tickets?email=' + encodeURIComponent(email));
-        } catch (err) {
-          state.textContent = 'Erro de rede. Tente novamente.';
-          return;
-        }
-
-        // fetch não lança em 4xx/5xx — precisamos checar response.ok/status :contentReference[oaicite:6]{index=6}
-        if (!resp.ok) {
-          state.textContent = 'Erro ao buscar ingressos (' + resp.status + ').';
-          return;
-        }
+        const resp = await fetch('/api/tickets?email=' + encodeURIComponent(email)).catch(() => null);
+        if (!resp) { state.textContent = 'Erro de rede.'; return; }
+        if (!resp.ok) { state.textContent = 'Erro ao buscar (' + resp.status + ').'; return; }
 
         const data = await resp.json();
-        if (!data.ok) {
-          state.textContent = data.message || 'Não foi possível obter seus ingressos.';
-          return;
-        }
-
+        if (!data.ok) { state.textContent = data.message || 'Falha ao obter ingressos.'; return; }
         state.textContent = '';
 
-        const tickets = data.tickets || [];
-        if (!tickets.length) {
-          empty.style.display = 'block';
-          return;
-        }
+        const orders = data.tickets || [];
+        if (!orders.length) { empty.style.display = 'block'; return; }
 
-        // Agrupa e renderiza
-        tickets.forEach((t, i) => {
+        // Render
+        orders.forEach((order, idx) => {
           const card = document.createElement('div');
           card.className = 'card fade-in';
           card.style.marginBottom = 'var(--spacing-xl)';
-          card.style.animationDelay = (i * 0.06) + 's';
+          card.style.animationDelay = (idx * 0.06) + 's';
 
-          const seatsHtml = (t.seats || []).map(code => {
-            // se vier "A-03 (andar 1)", separa visualmente
-            const m = String(code).match(/^([A-Z]+-\d{2})(?:\s*\(andar\s*(\d+)\))?$/i);
-            const label = m ? m[1] : code;
-            const floor = m && m[2] ? ' • Andar ' + m[2] : '';
-            return `<span class="seat" title="${code}">${label}</span>${floor}`;
-          }).join(' ');
+          const paidAt = order.paidAt ? new Date(order.paidAt).toLocaleString('pt-BR') : '—';
+          // andares distintos no pedido
+          const floors = [...new Set((order.seats || []).map(s => s.floor))].sort((a, b) => a - b).join(', ');
 
-          const paidAt = t.paidAt ? new Date(t.paidAt).toLocaleString('pt-BR') : '—';
-
-          card.innerHTML = `
+          // Cabeçalho do pedido
+          let html = `
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--spacing-md);margin-bottom:var(--spacing-lg);padding-bottom:var(--spacing-lg);border-bottom:2px solid var(--color-border);flex-wrap:wrap">
               <div>
-                <h2 style="margin-bottom:var(--spacing-xs)">Pedido ${t.orderId}</h2>
+                <h2 style="margin-bottom:var(--spacing-xs)">Pedido ${order.orderId}</h2>
                 <p class="muted" style="margin:0">Pago em ${paidAt}</p>
               </div>
-              <button class="btn btn-secondary no-print" onclick="window.print()">Imprimir</button>
+              <button class="btn btn-secondary no-print" onclick="window.print()">Baixar</button>
             </div>
 
-            <div style="display:grid;gap:10px">
-              <div><strong>Assentos</strong></div>
-              <div>${seatsHtml || '<span class="muted">—</span>'}</div>
-              <div class="muted" style="margin-top:6px">Total: R$ ${Number(t.total || 0).toFixed(2)}</div>
+            <div style="display:grid; gap:14px">
+              <div><strong>Assentos</strong> <span class="muted">• Andar ${floors || '—'}</span></div>
+              <div id="seats-${order.orderId}"></div>
+              <div class="muted" style="margin-top:6px">Total: R$ ${Number(order.total || 0).toFixed(2)} • ${order.paymentMethod?.toUpperCase() || 'CARD'} ${order.installments || 1}x</div>
             </div>
           `;
+
+          card.innerHTML = html;
           list.appendChild(card);
+
+          // Renderizar cada ingresso (chip + QR)
+          const wrap = document.getElementById(`seats-${order.orderId}`);
+          wrap.style.display = 'grid';
+          wrap.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
+          wrap.style.gap = '14px';
+
+          (order.seats || []).forEach((s, i) => {
+            const cell = document.createElement('div');
+            cell.className = 'ticket-cell';
+            cell.innerHTML = `
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="${seatChipStyle}">${s.code}</span>
+                <div>
+                  <div><strong>${s.code}</strong> <span class="muted">• Andar ${s.floor}</span></div>
+                  <div class="muted" style="font-size:12px">${s.checkedInAt ? ('Usado em ' + new Date(s.checkedInAt).toLocaleString('pt-BR')) : 'Aguardando check-in'}</div>
+                </div>
+              </div>
+              <div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <canvas id="qr-${order.orderId}-${i}" width="120" height="120" style="background:#fff;padding:6px;border-radius:8px"></canvas>
+                ${s.downloadUrl ? `<a href="${s.downloadUrl}" class="btn btn-primary">Baixar PDF</a>` : `<span class="muted">PDF indisponível</span>`}
+              </div>
+            `;
+
+            wrap.appendChild(cell);
+
+            // Gera QR real (TKT1:token)
+            const token = s.qrToken ? `TKT1:${s.qrToken}` : `TKT1:PENDENTE`;
+            const canvas = cell.querySelector('canvas');
+            QRCode.toCanvas(canvas, token, { width: 120, margin: 0 }, (err) => {
+              if (err) console.error('QR error', err);
+            });
+          });
         });
       }
     })();

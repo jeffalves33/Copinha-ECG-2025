@@ -8,6 +8,7 @@ const cors = require('./middlewares/cors');
 const error = require('./middlewares/error');
 
 const admin = require('./routes/admin.routes');
+const checkin = require('./routes/checkin.routes');
 const health = require('./routes/health.routes');
 const orders = require('./routes/orders.routes');
 const sessions = require('./routes/sessions.routes');
@@ -25,7 +26,7 @@ app.use(express.json());
 // servir seus HTMLs (pasta pública do seu projeto)
 app.use('/', express.static(path.join(__dirname, '..', 'public')));  // a pasta onde estão index.html, etc.
 
-app.use('/api', admin, health, orders, sessions, seats, tickets, webhooks);
+app.use('/api', admin, checkin, health, orders, sessions, seats, tickets, webhooks);
 app.use(error);
 
 const port = process.env.PORT || 3001;

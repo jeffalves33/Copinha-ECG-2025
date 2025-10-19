@@ -105,6 +105,11 @@ CREATE TABLE IF NOT EXISTS order_items (
   created_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE public.order_items
+  ADD COLUMN IF NOT EXISTS qr_token text UNIQUE,
+  ADD COLUMN IF NOT EXISTS checked_in_at timestamptz,
+  ADD COLUMN IF NOT EXISTS checked_in_by text;
+
 -- Helpful indexes
 CREATE INDEX IF NOT EXISTS idx_seats_session_status ON seats(session_id, status);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);

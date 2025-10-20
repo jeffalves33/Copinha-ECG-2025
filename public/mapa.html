@@ -162,7 +162,7 @@
     // ==========================
     // CONTEXTO / SESSÃO ATUAL
     // ==========================
-    const TICKET_PRICE = 70.00; // mantenha se já existir
+    const TICKET_PRICE = 1; // mantenha se já existir
     const selectedSession = sessionStorage.getItem('selectedSession');
     if (!selectedSession) window.location.href = 'sessao.html';
     document.getElementById('selected-session-display').textContent = selectedSession === '16h' ? 'Sessão da Tarde - 16:00' : 'Sessão da Noite - 19:00';

@@ -380,7 +380,7 @@ router.get('/tickets', async (req, res, next) => {
         // 2) pedidos pagos do usuário
         const { data: orders, error: oerr } = await supabase
             .from('orders')
-            .select('id, total_amount, paid_at, session_id, payment_method, installments')
+            .select('id, total_amount, paid_at, session_id, payment_method, installments, session: sessions(name)')
             .eq('user_id', user.id)
             .eq('status', 'paid')
             .order('paid_at', { ascending: false });
@@ -413,6 +413,7 @@ router.get('/tickets', async (req, res, next) => {
 
         const tickets = orders.map(o => ({
             orderId: o.id,
+            session: o.session ? { name: o.session.name } : { id: o.session_id },
             seats: (byOrder[o.id] || []),
             paidAt: o.paid_at,
             total: o.total_amount,

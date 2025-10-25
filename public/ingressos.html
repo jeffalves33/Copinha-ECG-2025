@@ -69,6 +69,39 @@
         display: none
       }
     }
+
+    .ticket-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-auto-rows: auto;
+      column-gap: 12px;
+      row-gap: 6px;
+      align-items: center;
+    }
+
+    .ticket-grid .title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
+
+    .ticket-grid .date {
+      text-align: right;
+    }
+
+    .ticket-grid .action {
+      justify-self: end;
+      align-self: start;
+    }
+
+    /* botão cola à direita, abaixo da data */
+    .btn-compact {
+      padding: 6px 10px;
+      line-height: 1;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -101,7 +134,7 @@
             Digite o <strong>e-mail usado no checkout</strong> para ver seus ingressos pagos.
           </p>
 
-          <form id="formTickets" style="display:flex;gap:var(--spacing-md);flex-wrap:wrap" novalidate>
+          <form id="formTickets" style="display:flex;gap:var(--spacing-md);flex-wrap:wrap;align-items:flex-end;" novalidate>
             <div style="flex:1;min-width:260px">
               <label for="email" class="muted" style="display:block;margin-bottom:6px">E-mail</label>
               <input id="email" name="email" type="email" required autocomplete="email" class="form-input"
@@ -190,72 +223,56 @@
         state.textContent = '';
 
         const orders = data.tickets || [];
+        console.log("🚀 ~ fetchTickets ~ orders: ", orders)
         if (!orders.length) { empty.style.display = 'block'; return; }
 
         // Render
+
         orders.forEach((order, idx) => {
           const card = document.createElement('div');
           card.className = 'card fade-in';
-          card.style.marginBottom = 'var(--spacing-xl)';
-          card.style.animationDelay = (idx * 0.06) + 's';
+          card.style.marginBottom = 'var(--spacing-md)';
+          card.style.padding = 'var(--spacing-lg)';
+          card.style.display = 'flex';
+          card.style.flexDirection = 'column';
+          card.style.gap = '10px';
+          card.style.animationDelay = (idx * 0.05) + 's';
 
           const paidAt = order.paidAt ? new Date(order.paidAt).toLocaleString('pt-BR') : '—';
-          // andares distintos no pedido
-          const floors = [...new Set((order.seats || []).map(s => s.floor))].sort((a, b) => a - b).join(', ');
+          const seats = order.seats?.map(s => s.code).join(', ') || '—';
+          const floors = [...new Set(order.seats.map(s => s.floor))].join(', ') || '—';
 
-          // Cabeçalho do pedido
-          let html = `
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--spacing-md);margin-bottom:var(--spacing-lg);padding-bottom:var(--spacing-lg);border-bottom:2px solid var(--color-border);flex-wrap:wrap">
-              <div>
-                <h2 style="margin-bottom:var(--spacing-xs)">Pedido ${order.orderId}</h2>
-                <p class="muted" style="margin:0">Pago em ${paidAt}</p>
+          const firstSeat = order.seats?.[0];
+          const statusText = firstSeat?.checkedInAt
+            ? `Usado em ${new Date(firstSeat.checkedInAt).toLocaleString('pt-BR')}`
+            : 'Aguardando check-in';
+
+          card.innerHTML = `
+            <div class="ticket-grid">
+              <!-- linha 1 -->
+              <div class="title">🎫 <span>Pedido ${order.orderId.slice(0, 8)}...</span></div>
+              <div class="date muted" style="font-size:0.9em;">${paidAt}</div>
+
+              <!-- linha 2 -->
+              <div class="muted">Sessão <strong>${order.session.name}</strong> • Andar <strong>${floors}</strong> • Assento: <strong>${seats}</strong></div>
+              <div class="action">
+                ${firstSeat?.downloadUrl
+              ? `<a href="${firstSeat.downloadUrl}" class="btn btn-primary btn-compact">Baixar PDF</a>`
+              : `<span class="muted" style="font-size:0.9em">PDF indisponível</span>`}
               </div>
-              <button class="btn btn-secondary no-print" onclick="window.print()">Baixar</button>
-            </div>
 
-            <div style="display:grid; gap:14px">
-              <div><strong>Assentos</strong> <span class="muted">• Andar ${floors || '—'}</span></div>
-              <div id="seats-${order.orderId}"></div>
-              <div class="muted" style="margin-top:6px">Total: R$ ${Number(order.total || 0).toFixed(2)} • ${order.paymentMethod?.toUpperCase() || 'CARD'} ${order.installments || 1}x</div>
+              <!-- linha 3 -->
+              <div class="muted" style="font-size:0.85em">${statusText}</div>
+              <div></div>
             </div>
           `;
 
-          card.innerHTML = html;
+
+
+
           list.appendChild(card);
-
-          // Renderizar cada ingresso (chip + QR)
-          const wrap = document.getElementById(`seats-${order.orderId}`);
-          wrap.style.display = 'grid';
-          wrap.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
-          wrap.style.gap = '14px';
-
-          (order.seats || []).forEach((s, i) => {
-            const cell = document.createElement('div');
-            cell.className = 'ticket-cell';
-            cell.innerHTML = `
-              <div style="display:flex;align-items:center;gap:12px">
-                <span style="${seatChipStyle}">${s.code}</span>
-                <div>
-                  <div><strong>${s.code}</strong> <span class="muted">• Andar ${s.floor}</span></div>
-                  <div class="muted" style="font-size:12px">${s.checkedInAt ? ('Usado em ' + new Date(s.checkedInAt).toLocaleString('pt-BR')) : 'Aguardando check-in'}</div>
-                </div>
-              </div>
-              <div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                <canvas id="qr-${order.orderId}-${i}" width="120" height="120" style="background:#fff;padding:6px;border-radius:8px"></canvas>
-                ${s.downloadUrl ? `<a href="${s.downloadUrl}" class="btn btn-primary">Baixar PDF</a>` : `<span class="muted">PDF indisponível</span>`}
-              </div>
-            `;
-
-            wrap.appendChild(cell);
-
-            // Gera QR real (TKT1:token)
-            const token = s.qrToken ? `TKT1:${s.qrToken}` : `TKT1:PENDENTE`;
-            const canvas = cell.querySelector('canvas');
-            QRCode.toCanvas(canvas, token, { width: 120, margin: 0 }, (err) => {
-              if (err) console.error('QR error', err);
-            });
-          });
         });
+
       }
     })();
   </script>

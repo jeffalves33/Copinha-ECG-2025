@@ -13,7 +13,6 @@ function parseToken(raw) {
 router.post('/admin/checkin/scan', async (req, res, next) => {
     try {
         const token = parseToken(req.body?.token);
-        console.log("🚀 ~ router.post ~ token: ", token)
         if (!token) return res.status(400).json({ ok: false, message: 'token inválido' });
 
         // 1) localizar o ingresso pelo token

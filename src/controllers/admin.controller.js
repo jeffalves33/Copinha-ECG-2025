@@ -68,8 +68,6 @@ async function getDashboardMetrics(req, res, next) {
                 }
             }
         });
-
-        res.json({ ok: true, seats: counts, revenue: { gross, fees, net } });
     } catch (e) { next(e); }
 }
 

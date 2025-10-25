@@ -361,17 +361,16 @@ router.get('/tickets/:token/pdf', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-// GET /api/tickets?email=...
 router.get('/tickets', async (req, res, next) => {
     try {
-        const raw = (req.query.email || '').trim().toLowerCase();
-        if (!raw) return res.status(400).json({ ok: false, message: 'email é obrigatório' });
+        const raw = (req.query.cpf || '').trim().toLowerCase();
+        if (!raw) return res.status(400).json({ ok: false, message: 'cpf é obrigatório' });
 
-        // 1) localizar usuário por email canônico
+        // 1) localizar usuário por cpf canônico
         const { data: user, error: uerr } = await supabase
             .from('users')
             .select('id, name, email')
-            .eq('email_canonical', raw)
+            .eq('cpf', raw)
             .maybeSingle();
 
         if (uerr) throw uerr;

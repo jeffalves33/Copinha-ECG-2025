@@ -129,16 +129,17 @@
 
         <!-- BUSCAR INGRESSOS -->
         <div class="card" style="margin-bottom: var(--spacing-xl);">
-          <h3 style="margin-bottom: var(--spacing-md);">Buscar por e-mail</h3>
+          <h3 style="margin-bottom: var(--spacing-md);">Buscar por CPF</h3>
           <p class="muted" style="margin-bottom: var(--spacing-lg);">
-            Digite o <strong>e-mail usado no checkout</strong> para ver seus ingressos pagos.
+            Digite o <strong>CPF usado no checkout</strong> para ver seus ingressos pagos.
           </p>
 
-          <form id="formTickets" style="display:flex;gap:var(--spacing-md);flex-wrap:wrap;align-items:flex-end;" novalidate>
+          <form id="formTickets" style="display:flex;gap:var(--spacing-md);flex-wrap:wrap;align-items:flex-end;"
+            novalidate>
             <div style="flex:1;min-width:260px">
-              <label for="email" class="muted" style="display:block;margin-bottom:6px">E-mail</label>
-              <input id="email" name="email" type="email" required autocomplete="email" class="form-input"
-                placeholder="voce@exemplo.com" />
+              <label for="cpf" class="muted form-label" style="display:block;margin-bottom:6px">CPF</label>
+              <input id="cpf" type="text" class="form-input" placeholder="000.000.000-00" required aria-required="true"
+                autocomplete="off">
             </div>
             <div>
               <button id="btnBuscar" type="submit" class="btn btn-primary">
@@ -186,7 +187,7 @@
   <script>
     (function () {
       const form = document.getElementById('formTickets');
-      const input = document.getElementById('email');
+      const input = document.getElementById('cpf');
       const state = document.getElementById('state');
       const list = document.getElementById('tickets-list');
       const empty = document.getElementById('empty-state');
@@ -195,26 +196,28 @@
       // estilos de chip (evitar texto cortado)
       const seatChipStyle = 'display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:999px;background:#fff;color:#0b0e13;font-weight:700;margin:4px;border:2px solid #dbe4ff;white-space:nowrap;';
 
-      const qsEmail = new URLSearchParams(location.search).get('email');
-      const savedEmail = localStorage.getItem('tickets:lastEmail') || '';
-      if (qsEmail) input.value = qsEmail; else if (savedEmail) input.value = savedEmail;
+      const qsCpf = new URLSearchParams(location.search).get('cpf');
+      const savedCpf = localStorage.getItem('tickets:lastCpf') || '';
+      if (qsCpf) input.value = qsCpf; else if (savedCpf) input.value = savedCpf;
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!input.checkValidity()) { input.reportValidity(); return; }
-        await fetchTickets(input.value.trim().toLowerCase());
+        const raw = input.value.trim();
+        if (!isValidCPF(raw)) {
+          state.textContent = 'CPF inválido. Verifique e tente novamente.';
+          return;
+        }
+        await fetchTickets(raw);
       });
 
-      //btnPrint.addEventListener('click', () => window.print());
-      if (input.value) fetchTickets(input.value.trim().toLowerCase());
+      if (input.value && isValidCPF(input.value)) fetchTickets(input.value.trim());
 
-      async function fetchTickets(email) {
+      async function fetchTickets(cpf) {
         list.innerHTML = '';
         empty.style.display = 'none';
         state.innerHTML = '<span class="spinner"></span> Buscando ingressos...';
-        localStorage.setItem('tickets:lastEmail', email);
-
-        const resp = await fetch('/api/tickets?email=' + encodeURIComponent(email)).catch(() => null);
+        localStorage.setItem('tickets:lastCpf', cpf);
+        const resp = await fetch('/api/tickets?cpf=' + encodeURIComponent(cpf)).catch(() => null);
         if (!resp) { state.textContent = 'Erro de rede.'; return; }
         if (!resp.ok) { state.textContent = 'Erro ao buscar (' + resp.status + ').'; return; }
 
@@ -223,7 +226,6 @@
         state.textContent = '';
 
         const orders = data.tickets || [];
-        console.log("🚀 ~ fetchTickets ~ orders: ", orders)
         if (!orders.length) { empty.style.display = 'block'; return; }
 
         // Render
@@ -275,6 +277,40 @@
 
       }
     })();
+
+    // Máscara de cpf simples
+    document.getElementById('cpf').addEventListener('input', function (e) {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length > 11) value = value.slice(0, 11);
+
+      if (value.length > 9) {
+        value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9)}`;
+      } else if (value.length > 6) {
+        value = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6)}`;
+      } else if (value.length > 3) {
+        value = `${value.slice(0, 3)}.${value.slice(3)}`;
+      }
+      e.target.value = value;
+    });
+
+    function onlyDigits(str) {
+      return (str || '').replace(/\D/g, '');
+    }
+
+    function isValidCPF(raw) {
+      const cpf = onlyDigits(raw);
+      if (!cpf || cpf.length !== 11) return false;
+      if (/^(\d)\1{10}$/.test(cpf)) return false;
+      let sum = 0, rest;
+      for (let i = 0; i < 9; i++) sum += Number(cpf[i]) * (10 - i);
+      rest = (sum * 10) % 11; if (rest === 10) rest = 0;
+      if (rest !== Number(cpf[9])) return false;
+      sum = 0;
+      for (let i = 0; i < 10; i++) sum += Number(cpf[i]) * (11 - i);
+      rest = (sum * 10) % 11; if (rest === 10) rest = 0;
+      return rest === Number(cpf[10]);
+    }
+
   </script>
 </body>
 

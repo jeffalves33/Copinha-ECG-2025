@@ -6,24 +6,26 @@ function parseToken(raw) {
     if (!raw || typeof raw !== 'string') return null;
     const s = raw.trim();
     if (s.startsWith('TKT1:')) return s.slice(5);
-    return s; // aceita sem prefixo também
+    return s;
 }
 
 // POST /api/admin/checkin/scan  { token }
 router.post('/admin/checkin/scan', async (req, res, next) => {
     try {
         const token = parseToken(req.body?.token);
+        console.log("🚀 ~ router.post ~ token: ", token)
         if (!token) return res.status(400).json({ ok: false, message: 'token inválido' });
 
         // 1) localizar o ingresso pelo token
         const { data: item, error: ierr } = await supabase
             .from('order_items')
             .select(`
-        id, qr_token, checked_in_at,
-        order:order_id(id, status, paid_at, session_id, user_id),
-        seat:seat_id(row_label, seat_number, floor),
-        user:order_id!inner(user_id)  -- truque para pegar o user via order_id
-      `)
+                id, qr_token, checked_in_at,
+                order:order_id(id, status, paid_at, session_id, user_id),
+                seat:seat_id(row_label, seat_number, floor),
+                user:order_id!inner(user_id)
+            `
+            )
             .eq('qr_token', token)
             .single();
 
@@ -60,7 +62,7 @@ router.post('/admin/checkin/scan', async (req, res, next) => {
             ok: true,
             buyer: { name: order.user?.name || '—', email: order.user?.email || '—', phone: order.user?.phone || '—' },
             order: { id: order.id, paidAt: order.paid_at },
-            tickets,                         // todos do pedido para aprovar 1..N
+            tickets,
             current: thisOne || null
         });
     } catch (e) { next(e); }

@@ -110,8 +110,6 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
 
                 if (upd1err) console.error('[MP] update order error', upd1err);
                 else console.log('[MP] order marked as paid', upd1);
-
-                console.log('[MP] payment approved → generating qr tokens', { orderId: order.id });
                 await ensureQrTokensForOrder(order.id);
 
 
@@ -177,8 +175,6 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
 
                 if (upd2err) console.error('[MP] update order error', upd2err);
                 else console.log('[MP] order marked as paid', upd2);
-
-                console.log('[MP] merchant_order paid → generating qr tokens', { orderId: order.id });
                 await ensureQrTokensForOrder(order.id);
 
 

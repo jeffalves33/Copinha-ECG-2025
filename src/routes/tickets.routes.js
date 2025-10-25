@@ -53,64 +53,311 @@ router.get('/tickets/:token/pdf', async (req, res, next) => {
 
         // ====== monta o PDF ======
         const pdf = await PDFDocument.create();
-        const page = pdf.addPage([595.28, 420.94]); // A5 landscape (pts)
+        const page = pdf.addPage([320, 680]); // Mobile otimizado - mais alto para respirar
         const { width, height } = page.getSize();
 
         // fontes
         const font = await pdf.embedFont(StandardFonts.Helvetica);
         const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-        // QR como PNG buffer
-        const payload = `TKT1:${item.qr_token}`;
+        // QR
+        const payload = `${item.qr_token}`;
+
         const qrPng = await QRCode.toBuffer(payload, { width: 520, margin: 0 });
         const qr = await pdf.embedPng(qrPng);
-        const qrW = 170, qrH = 170;
-        const qrX = width - qrW - 40;
-        const qrY = height - qrH - 40;
 
-        // fundo sutil
-        page.drawRectangle({ x: 20, y: 20, width: width - 40, height: height - 40, color: rgb(0.07, 0.08, 0.1), borderColor: rgb(0.15, 0.18, 0.26), borderWidth: 1, opacity: 0.95, borderOpacity: 0.8, });
-        page.drawRectangle({ x: 28, y: 28, width: width - 56, height: height - 56, color: rgb(0.12, 0.14, 0.18), opacity: 0.92 });
+        // ===== CORES ELEGANTES =====
+        const darkBg = rgb(0.05, 0.05, 0.05);        // #0d0d0d - quase preto
+        const cardBg = rgb(0.08, 0.08, 0.08);        // #141414 - cinza muito escuro
+        const accentGreen = rgb(0.42, 1.0, 0.45)     // #6bff72 - verde elegante
+        const textWhite = rgb(0.98, 0.98, 0.98);     // #fafafa - branco suave
+        const textGray = rgb(0.6, 0.6, 0.6);         // #999999 - cinza médio
+        const textMuted = rgb(0.45, 0.45, 0.45);     // #737373 - cinza escuro
 
-        // cabeçalho
-        const title = 'Copinha ECG • Ingresso';
-        page.drawText(title, { x: 40, y: height - 60, size: 18, font: fontBold, color: rgb(0.93, 0.96, 1) });
+        // ===== BACKGROUND PRINCIPAL =====
+        page.drawRectangle({
+            x: 0,
+            y: 0,
+            width: width,
+            height: height,
+            color: darkBg
+        });
 
-        // sessão / local / data
-        const leftY = height - 100;
-        const venue = session?.venue_name ? `${session.venue_name}${session.venue_address ? ' • ' + session.venue_address : ''}` : '';
-        const when = session?.starts_at ? new Date(session.starts_at).toLocaleString('pt-BR') : (sessionLabel || '');
-        page.drawText(sessionLabel, { x: 40, y: leftY, size: 12, font, color: rgb(0.80, 0.85, 0.95) });
-        if (venue) page.drawText(venue, { x: 40, y: leftY - 18, size: 10, font, color: rgb(0.65, 0.7, 0.82) });
-        page.drawText(`Data/Hora: ${when}`, { x: 40, y: leftY - 36, size: 10, font, color: rgb(0.65, 0.7, 0.82) });
+        // ===== HEADER COM GRADIENTE SIMULADO =====
+        // Barra superior verde
+        page.drawRectangle({
+            x: 0,
+            y: height - 4,
+            width: width,
+            height: 4,
+            color: accentGreen
+        });
 
-        // bloco do assento
-        const blockY = leftY - 80;
-        page.drawText('Assento', { x: 40, y: blockY, size: 11, font, color: rgb(0.70, 0.75, 0.88) });
-        page.drawText(`${seatCode} • Andar ${seat.floor}`, { x: 40, y: blockY - 18, size: 22, font: fontBold, color: rgb(1, 1, 1) });
+        // Logo/Título
+        let yPos = height - 45;
+        page.drawText('COPINHA ECG', {
+            x: 25,
+            y: yPos,
+            size: 22,
+            font: fontBold,
+            color: textWhite
+        });
 
-        // comprador
-        const buyerY = blockY - 60;
-        page.drawText('Titular', { x: 40, y: buyerY, size: 11, font, color: rgb(0.70, 0.75, 0.88) });
-        page.drawText(`${buyer.name || '—'}`, { x: 40, y: buyerY - 18, size: 14, font: fontBold, color: rgb(1, 1, 1) });
+        yPos -= 18;
+        page.drawText('INGRESSO DIGITAL', {
+            x: 25,
+            y: yPos,
+            size: 8,
+            font,
+            color: accentGreen,
+            opacity: 0.9
+        });
 
-        // pedido
-        const ordY = buyerY - 50;
-        page.drawText('Pedido', { x: 40, y: ordY, size: 11, font, color: rgb(0.70, 0.75, 0.88) });
-        page.drawText(`${item.order.id}`, { x: 40, y: ordY - 18, size: 10, font, color: rgb(0.85, 0.9, 1) });
+        // ===== LINHA DECORATIVA =====
+        yPos -= 20;
+        page.drawRectangle({
+            x: 25,
+            y: yPos,
+            width: 60,
+            height: 2,
+            color: accentGreen
+        });
 
-        // QR
-        page.drawText('Apresente este QR no acesso', { x: qrX, y: qrY + qrH + 6, size: 9, font, color: rgb(0.65, 0.7, 0.82) });
-        page.drawImage(qr, { x: qrX, y: qrY, width: qrW, height: qrH });
+        // ===== CARD PRINCIPAL DE INFORMAÇÕES =====
+        yPos -= 35;
+        const cardStartY = yPos;
 
-        // rodapé
-        page.drawText('Válido para 1 entrada • Não compartilhe este código', { x: 40, y: 34, size: 9, font, color: rgb(0.65, 0.7, 0.82) });
+        // SESSÃO
+        page.drawText('SESSÃO', {
+            x: 25,
+            y: yPos,
+            size: 8,
+            font,
+            color: accentGreen
+        });
+
+        yPos -= 18;
+        page.drawText(sessionLabel, {
+            x: 25,
+            y: yPos,
+            size: 16,
+            font: fontBold,
+            color: textWhite
+        });
+
+        // DATA/HORA
+        yPos -= 26;
+        const when = session?.starts_at ? new Date(session.starts_at).toLocaleString('pt-BR') : '';
+        page.drawText('DATA E HORÁRIO', {
+            x: 25,
+            y: yPos,
+            size: 8,
+            font,
+            color: accentGreen
+        });
+
+        yPos -= 16;
+        page.drawText(when, {
+            x: 25,
+            y: yPos,
+            size: 11,
+            font,
+            color: textGray
+        });
+
+        // LOCAL
+        yPos -= 26;
+        const venue = session?.venue_name || '';
+        const address = session?.venue_address || '';
+
+        page.drawText('LOCAL', {
+            x: 25,
+            y: yPos,
+            size: 8,
+            font,
+            color: accentGreen
+        });
+
+        yPos -= 16;
+        if (venue) {
+            page.drawText(venue, {
+                x: 25,
+                y: yPos,
+                size: 12,
+                font: fontBold,
+                color: textWhite
+            });
+
+            yPos -= 14;
+            if (address) {
+                const maxLen = 60;
+                const addr = address.length > maxLen ? address.substring(0, maxLen) + '...' : address;
+                page.drawText(addr, {
+                    x: 25,
+                    y: yPos,
+                    size: 9,
+                    font,
+                    color: textMuted
+                });
+            }
+        }
+
+        // ===== CARD DO ASSENTO - DESTAQUE =====
+        yPos -= 40;
+        const seatBoxY = yPos;
+        const seatBoxHeight = 70;
+
+        // Card com borda verde elegante
+        page.drawRectangle({
+            x: 20,
+            y: seatBoxY - seatBoxHeight,
+            width: width - 40,
+            height: seatBoxHeight,
+            color: cardBg,
+            borderColor: accentGreen,
+            borderWidth: 1.5
+        });
+
+        // Conteúdo do card de assento
+        page.drawText('ASSENTO', {
+            x: 35,
+            y: seatBoxY - 22,
+            size: 8,
+            font,
+            color: accentGreen
+        });
+
+        page.drawText(seatCode, {
+            x: 35,
+            y: seatBoxY - 48,
+            size: 28,
+            font: fontBold,
+            color: textWhite
+        });
+
+        page.drawText(`ANDAR ${seat.floor}`, {
+            x: 35,
+            y: seatBoxY - 62,
+            size: 10,
+            font,
+            color: textGray
+        });
+
+        // ===== QR CODE - CENTRALIZADO E GRANDE =====
+        yPos = seatBoxY - seatBoxHeight - 35;
+        const qrSize = 160;
+        const qrX = width / 2 - qrSize / 2;
+        const qrY = yPos - qrSize - 30;
+
+        // Card do QR
+        page.drawRectangle({
+            x: qrX - 12,
+            y: qrY - 12,
+            width: qrSize + 24,
+            height: qrSize + 50,
+            color: cardBg,
+            borderColor: accentGreen,
+            borderWidth: 1.5
+        });
+
+        // Texto acima do QR
+        page.drawText('APRESENTE ESTE QR CODE', {
+            x: qrX + qrSize / 2 - 65,
+            y: qrY + qrSize + 18,
+            size: 9,
+            font: fontBold,
+            color: accentGreen
+        });
+
+        // QR Code
+        page.drawImage(qr, {
+            x: qrX,
+            y: qrY,
+            width: qrSize,
+            height: qrSize
+        });
+
+        // ===== INFORMAÇÕES DO TITULAR =====
+        yPos = qrY - 35;
+
+        page.drawText('TITULAR DO INGRESSO', {
+            x: 25,
+            y: yPos,
+            size: 8,
+            font,
+            color: accentGreen
+        });
+
+        yPos -= 16;
+        const buyerName = buyer.name || '—';
+        const maxNameLen = 32;
+        const displayName = buyerName.length > maxNameLen ? buyerName.substring(0, maxNameLen) + '...' : buyerName;
+
+        page.drawText(displayName, {
+            x: 25,
+            y: yPos,
+            size: 11,
+            font: fontBold,
+            color: textWhite
+        });
+
+        // ===== RODAPÉ =====
+        yPos -= 30;
+
+        // Linha decorativa
+        page.drawRectangle({
+            x: 25,
+            y: yPos,
+            width: width - 50,
+            height: 1,
+            color: rgb(0.2, 0.2, 0.2)
+        });
+
+        yPos -= 20;
+
+        // Número do pedido
+        page.drawText('Nº DO PEDIDO', {
+            x: 25,
+            y: yPos,
+            size: 7,
+            font,
+            color: textMuted
+        });
+
+        page.drawText(`#${item.order.id.slice(0, 8)}`, {
+            x: width - 95,
+            y: yPos,
+            size: 8,
+            font: fontBold,
+            color: textGray
+        });
+
+        yPos -= 20;
+
+        // Avisos
+        page.drawText('Válido para 1 entrada', {
+            x: 25,
+            y: yPos,
+            size: 7,
+            font,
+            color: textMuted
+        });
+
+        page.drawText('Não compartilhe este código', {
+            x: width - 145,
+            y: yPos,
+            size: 7,
+            font,
+            color: textMuted
+        });
 
         const bytes = await pdf.save();
         const fname = `Ingresso_${session?.name || 'Sessao'}_${seatCode}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
         res.send(Buffer.from(bytes));
+
+
     } catch (e) { next(e); }
 });
 

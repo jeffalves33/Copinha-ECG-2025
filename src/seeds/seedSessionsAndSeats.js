@@ -97,6 +97,5 @@ function expandRow(row) {
         }
     }
 
-    console.log('Seed OK');
     process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });

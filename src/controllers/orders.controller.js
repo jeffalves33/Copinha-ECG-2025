@@ -143,7 +143,6 @@ async function getOrderSummary(req, res, next) {
             qrToken: it.qr_token || null,
             checkedInAt: it.checked_in_at || null
         }));
-        console.log("🚀 ~ getOrderSummary ~ tickets: ", tickets)
 
         res.json({
             ok: true,

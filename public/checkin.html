@@ -91,23 +91,23 @@
                 const tks = r.tickets || [];
 
                 result.innerHTML = `
-      <div class="card" style="margin-bottom:10px">
-        <strong>${buyer.name || '—'}</strong><br/>
-        <span class="muted">${buyer.email || ''} ${buyer.phone ? ' • ' + buyer.phone : ''}</span><br/>
-        <span class="muted">Pedido ${order.id || ''}</span>
-      </div>
-      <div id="ticketList"></div>
-    `;
+                    <div class="card" style="margin-bottom:10px">
+                        <strong>${buyer.name || '—'}</strong><br/>
+                        <span class="muted">${buyer.email || ''} ${buyer.phone ? ' • ' + buyer.phone : ''}</span><br/>
+                        <span class="muted">Pedido ${order.id || ''}</span>
+                    </div>
+                    <div id="ticketList"></div>
+                `;
 
                 const list = document.getElementById('ticketList');
                 list.innerHTML = tks.map(t => `
-      <label class="ticket-line">
-        <div><strong>${t.code}</strong> • Andar ${t.floor} ${t.checkedInAt ? `<span class="muted">• usado ${new Date(t.checkedInAt).toLocaleString('pt-BR')}</span>` : ''}</div>
-        <div>
-          ${t.checkedInAt ? '<span class="muted">Já usado</span>' : `<input type="checkbox" class="tkchk" value="${t.token}">`}
-        </div>
-      </label>
-    `).join('');
+                    <label class="ticket-line">
+                        <div><strong>${t.code}</strong> • Andar ${t.floor} ${t.checkedInAt ? `<span class="muted">• usado ${new Date(t.checkedInAt).toLocaleString('pt-BR')}</span>` : ''}</div>
+                        <div>
+                        ${t.checkedInAt ? '<span class="muted">Já usado</span>' : `<input type="checkbox" class="tkchk" value="${t.token}">`}
+                        </div>
+                    </label>
+                `).join('');
 
                 actions.style.display = 'block';
             }

@@ -681,17 +681,6 @@ a:hover {
   flex: 1;
 }
 
-.ticket-qr {
-  width: 100px;
-  height: 100px;
-  background-color: var(--color-background);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--color-border);
-}
-
 .ticket-details {
   display: grid;
   gap: var(--spacing-md);

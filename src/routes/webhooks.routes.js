@@ -6,12 +6,10 @@ const { getMerchantOrder, getPayment } = require('../services/mercadoPago.servic
 const crypto = require('crypto');
 
 // no topo já existe: const crypto = require('crypto');
-
 async function ensureQrTokensForOrder(orderId) {
     try {
         console.log('[QR] ensureQrTokensForOrder start', { orderId });
 
-        // busca todos os itens do pedido
         const { data: items, error: qErr } = await supabase
             .from('order_items')
             .select('id, qr_token')
@@ -25,30 +23,24 @@ async function ensureQrTokensForOrder(orderId) {
 
         if (!items?.length) return;
 
-        // gera tokens apenas para os que estão sem
-        const updates = [];
+        let created = 0;
         for (const it of items) {
-            if (!it.qr_token) {
-                // pode usar randomUUID (suficientemente aleatório e URL-safe)
-                updates.push({ id: it.id, qr_token: crypto.randomUUID() });
+            if (it.qr_token) continue;
+
+            const token = crypto.randomUUID(); // opaco e URL-safe o suficiente
+            const { error: uErr } = await supabase
+                .from('order_items')
+                .update({ qr_token: token })
+                .eq('id', it.id);
+
+            if (uErr) console.error('[QR] update token error', { itemId: it.id, uErr });
+            else {
+                created++;
+                console.log('[QR] token set for item', it.id);
             }
         }
 
-        if (!updates.length) {
-            console.log('[QR] no missing tokens — all good');
-            return;
-        }
-
-        const { data: up, error: uErr } = await supabase
-            .from('order_items')
-            .upsert(updates)
-            .select('id, qr_token');
-
-        if (uErr) {
-            console.error('[QR] upsert tokens error', uErr);
-        } else {
-            console.log('[QR] tokens created', up?.length || 0);
-        }
+        console.log('[QR] tokens created (update-by-id)', created);
     } catch (e) {
         console.error('[QR] unexpected error', e);
     }

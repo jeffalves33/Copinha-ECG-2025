@@ -115,7 +115,7 @@ async function getOrderSummary(req, res, next) {
     try {
         const { id } = req.params;
 
-        // 1) pedido + comprador
+        // pedido + comprador
         const { data: order, error: oerr } = await supabase
             .from('orders')
             .select('id,status,total_amount,paid_at,session_id, user:user_id(name,email)')
@@ -123,14 +123,14 @@ async function getOrderSummary(req, res, next) {
             .single();
         if (oerr || !order) return res.status(404).json({ ok: false, message: 'Pedido não encontrado' });
 
-        // 2) itens com assentos
+        // itens com assento + qr_token + checkin
         const { data: items, error: ierr } = await supabase
             .from('order_items')
-            .select('seat_id, seats:seat_id(row_label, seat_number, floor)')
+            .select('qr_token, checked_in_at, seats:seat_id(row_label, seat_number, floor)')
             .eq('order_id', id);
         if (ierr) throw ierr;
 
-        // 3) sessão (opcional: nome/horários para exibir)
+        // sessão
         const { data: session } = await supabase
             .from('sessions')
             .select('id, name, starts_at, ends_at, venue_name, venue_address')
@@ -139,7 +139,9 @@ async function getOrderSummary(req, res, next) {
 
         const tickets = (items || []).map(it => ({
             code: `${it.seats.row_label}-${String(it.seats.seat_number).padStart(2, '0')}`,
-            floor: it.seats.floor
+            floor: it.seats.floor,
+            qrToken: it.qr_token || null,
+            checkedInAt: it.checked_in_at || null
         }));
 
         res.json({

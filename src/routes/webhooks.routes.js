@@ -5,27 +5,55 @@ const { supabase } = require('../services/supabase');
 const { getMerchantOrder, getPayment } = require('../services/mercadoPago.service');
 const crypto = require('crypto');
 
+// no topo já existe: const crypto = require('crypto');
+
 async function ensureQrTokensForOrder(orderId) {
-    const { data: items, error } = await supabase
-        .from('order_items')
-        .select('id, qr_token')
-        .eq('order_id', orderId);
+    try {
+        console.log('[QR] ensureQrTokensForOrder start', { orderId });
 
-    if (error || !items?.length) return;
+        // busca todos os itens do pedido
+        const { data: items, error: qErr } = await supabase
+            .from('order_items')
+            .select('id, qr_token')
+            .eq('order_id', orderId);
 
-    const updates = [];
-    for (const it of items) {
-        if (!it.qr_token) {
-            updates.push({
-                id: it.id,
-                qr_token: crypto.randomBytes(16).toString('base64url') // 128 bits, único o suficiente
-            });
+        if (qErr) {
+            console.error('[QR] select order_items error', qErr);
+            return;
         }
-    }
-    if (updates.length) {
-        await supabase.from('order_items').upsert(updates).select('id');
+        console.log('[QR] items found', items?.length || 0);
+
+        if (!items?.length) return;
+
+        // gera tokens apenas para os que estão sem
+        const updates = [];
+        for (const it of items) {
+            if (!it.qr_token) {
+                // pode usar randomUUID (suficientemente aleatório e URL-safe)
+                updates.push({ id: it.id, qr_token: crypto.randomUUID() });
+            }
+        }
+
+        if (!updates.length) {
+            console.log('[QR] no missing tokens — all good');
+            return;
+        }
+
+        const { data: up, error: uErr } = await supabase
+            .from('order_items')
+            .upsert(updates)
+            .select('id, qr_token');
+
+        if (uErr) {
+            console.error('[QR] upsert tokens error', uErr);
+        } else {
+            console.log('[QR] tokens created', up?.length || 0);
+        }
+    } catch (e) {
+        console.error('[QR] unexpected error', e);
     }
 }
+
 
 // Util: soma pagamentos aprovados na merchant order
 function merchantOrderIsPaid(mo) {
@@ -47,7 +75,7 @@ function parseNotification(req) {
 router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
     try {
         const { topic, id } = parseNotification(req);
-        if (!topic || !id) return res.sendStatus(200); // evita loops
+        if (!topic || !id) return res.sendStatus(200);
 
         // Normaliza o nome do tópico (payment/merchant_order)
         const t = String(topic).toLowerCase();
@@ -77,7 +105,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 const installments = Number(pay.installments || 1);
 
                 // Atualiza status + provider_payment_id + método e parcelas
-                await supabase.from('orders')
+                const { data: upd1, error: upd1err } = await supabase.from('orders')
                     .update({
                         status: 'paid',
                         paid_at: new Date().toISOString(),
@@ -85,9 +113,15 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                         payment_method: method,
                         installments: installments
                     })
-                    .eq('id', order.id);
+                    .eq('id', order.id)
+                    .select('id');
 
+                if (upd1err) console.error('[MP] update order error', upd1err);
+                else console.log('[MP] order marked as paid', upd1);
+
+                console.log('[MP] payment approved → generating qr tokens', { orderId: order.id });
                 await ensureQrTokensForOrder(order.id);
+
 
                 // 4) seats do pedido -> sold
                 const { data: items } = await supabase
@@ -138,7 +172,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                     }
                 }
 
-                await supabase.from('orders')
+                const { data: upd2, error: upd2err } = await supabase.from('orders')
                     .update({
                         status: 'paid',
                         paid_at: new Date().toISOString(),
@@ -146,9 +180,15 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                         payment_method: method || 'card',
                         installments: installments
                     })
-                    .eq('id', order.id);
+                    .eq('id', order.id)
+                    .select('id');
 
+                if (upd2err) console.error('[MP] update order error', upd2err);
+                else console.log('[MP] order marked as paid', upd2);
+
+                console.log('[MP] merchant_order paid → generating qr tokens', { orderId: order.id });
                 await ensureQrTokensForOrder(order.id);
+
 
                 const { data: items } = await supabase
                     .from('order_items')

@@ -40,13 +40,11 @@
           Aguardando confirmação do pagamento…
         </h1>
 
-
         <p style="font-size: var(--font-size-xl); color: var(--color-text); margin-bottom: var(--spacing-sm);">
           Seus ingressos foram enviados para o e-mail:
         </p>
         <p style="font-size: var(--font-size-xl); font-weight: 700; color: var(--color-primary); margin-bottom: var(--spacing-xl);"
           id="buyer-email">
-          email@exemplo.com
         </p>
 
         <div class="alert alert-info" style="text-align: left; margin-bottom: var(--spacing-xl);">
@@ -158,8 +156,10 @@
       }
 
       function renderTickets(tickets, buyerName) {
+        console.log("🚀 ~ renderTickets ~ tickets: ", tickets)
         ticketsContainer.innerHTML = '';
         tickets.forEach((t, idx) => {
+          console.log("t: ", t)
           const el = document.createElement('div');
           el.className = 'ticket fade-in';
           el.style.animationDelay = `${idx * 0.1}s`;
@@ -177,7 +177,7 @@
             <div class="ticket-details">
               <div class="ticket-detail">
                 <div class="ticket-detail-label">Assento</div>
-                <div class="ticket-detail-value">${t.code} (andar ${t.floor})</div>
+                <div class="ticket-detail-value">Andar ${t.floor}: ${t.code}</div>
               </div>
               <div class="ticket-detail">
                 <div class="ticket-detail-label">Titular</div>

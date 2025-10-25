@@ -156,6 +156,20 @@
     </div>
   </div>
 
+  <!-- Modal: Já selecionado -->
+  <div id="selected-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+      <h3 style="margin:0 0 8px 0;">Poltrona indisponível 💺</h3>
+      <p style="margin:0 0 16px 0; line-height:1.4;">
+        Infelizmente <strong> alguém acabou de selecionar essa poltrona</strong>.
+        Caso não seja finalizada a compra, em 10 minutos ela voltará a ficar disponível.
+      </p>
+      <div style="display:flex; justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="confirmSelectedSeat()">Entendi</button>
+      </div>
+    </div>
+  </div>
+
 
   <script src="assets/js/app.js"></script>
   <script>
@@ -275,7 +289,7 @@
         seatData[code].status = 'reserved'; // reservado POR VOCÊ
         return true;
       } else {
-        alert(`Assento indisponível: ${resp.conflicts?.join(', ') || code}`);
+        document.getElementById('selected-modal').style.display = 'flex';
         return false;
       }
     }
@@ -546,6 +560,11 @@
       updateSummary();
       closeWheelchairModal();
       pendingWheelchairSeat = null;
+    }
+
+    function confirmSelectedSeat() {
+      document.getElementById('selected-modal').style.display = 'none';
+      //location.reload();
     }
 
     // ==========================

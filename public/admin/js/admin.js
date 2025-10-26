@@ -5,6 +5,7 @@ function fmtBRL(n) { return (Number(n) || 0).toLocaleString('pt-BR', { style: 'c
 function qs(sel) { return document.querySelector(sel) }
 function qsa(sel) { return Array.from(document.querySelectorAll(sel)) }
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
+
 async function api(path, opts) {
   const r = await fetch('/api' + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
   if (!r.ok) {
@@ -32,6 +33,28 @@ async function populateSessionsSelect(selectId, includeAll = true) {
     opt.textContent = label;
     sel.appendChild(opt);
   });
+}
+
+function updateCard(prefix, data) {
+  const { sold = 0, available = 0, revenue = 0 } = data;
+  const total = available;
+  const pct = total > 0 ? Math.round((sold / total) * 100) : 0;
+
+  setText(`#${prefix}Sold`, sold);
+  setText(`#${prefix}Available`, available);
+  setText(`#${prefix}Revenue`, fmtBRL(revenue));
+
+  const bar = document.querySelector(`#${prefix}Progress`);
+  if (bar) bar.style.width = `${pct}%`;
+}
+
+function setText(sel, val) {
+  const el = document.querySelector(sel);
+  if (el) el.textContent = val;
+}
+
+function fmtBRL(n) {
+  return (n ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 // ---------- auth ----------
@@ -77,9 +100,14 @@ const AdminDashboard = {
       }
 
 
-      // (opcional) se você quiser popular os blocos por sessão/andar aqui,
-      // crie um endpoint /api/admin/metrics/by-session e preencha:
-      // el('session15Sold', ...); el('session15Available', ...); el('session15Revenue', ...); etc.
+      //Sales
+      const sales = await api('/admin/sales/sold');
+      const sessions = sales?.sessions || [];
+      const s16 = sessions.find(s => s.session === '16h') || { sold: 0, available: 0, revenue: 0 };
+      const s19 = sessions.find(s => s.session === '19h') || { sold: 0, available: 0, revenue: 0 };
+      updateCard('session16', s16);
+      updateCard('session19', s19);
+
     } catch (e) {
       console.error(e);
     }
@@ -91,11 +119,11 @@ window.AdminDashboard = AdminDashboard;
 const AdminSales = {
   async loadSales() {
     const sess = qs('#filterSession')?.value || '';
-    const floor = qs('#filterFloor')?.value || '';
+    //const floor = qs('#filterFloor')?.value || '';
     const search = qs('#filterSearch')?.value || '';
     const params = new URLSearchParams();
     if (sess) params.set('sessionId', sess);
-    if (floor) params.set('floor', floor);
+    //if (floor) params.set('floor', floor);
     if (search) params.set('search', search);
 
     const { items } = await api('/admin/sales?' + params.toString());
@@ -112,11 +140,13 @@ const AdminSales = {
     tbody.innerHTML = items.map(it => {
       const seats = it.seats.map(s => `${s.code}`).join(', ');
       const paidAt = it.paidAt ? new Date(it.paidAt).toLocaleString('pt-BR') : '-';
-      const seat = it.sessionId === '54ee68e2-defa-44b2-8e93-b3ef990a6e52' ? '16h' : '19h';
+      const seat = it.sessionId === '9c3c87cb-4107-4d8e-a4ea-c1e8b0084e34' ? '16h' : '19h';
       return `<tr>
-        <td>${it.id}</td>
-        <td>${it.buyer}</td>
-        <td>${it.contact} ${it.userCpf ? it.userCpf : ''}</td>
+        <td>${it.id.slice(0,8)}</td>
+        <td>${it.buyer.slice(0,8)}</td>
+        <td>${it.email}</td>
+        <td>${it.cpf}</td>
+        <td>${it.phone}</td>
         <td>${seat}</td>
         <td>${[...new Set(it.seats.map(s => s.floor))].join(', ')}</td>
         <td>${seats}</td>
@@ -147,7 +177,7 @@ const AdminSales = {
         method: 'POST',
         body: JSON.stringify({ reason })
       });
-      alert(r.refunded ? 'Venda estornada e cancelada.' : 'Venda cancelada.');
+      //alert(r.refunded ? 'Venda estornada e cancelada.' : 'Venda cancelada.');
       this.closeCancelModal();
       this.loadSales();
     } catch (e) {

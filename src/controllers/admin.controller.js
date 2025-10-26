@@ -71,6 +71,60 @@ async function getDashboardMetrics(req, res, next) {
     } catch (e) { next(e); }
 }
 
+async function getSessionsSoldCounts(req, res, next) {
+    const ID_16H = '9c3c87cb-4107-4d8e-a4ea-c1e8b0084e34';
+    const ID_19H = '9882e22d-d089-4b06-82f5-0a838378ba62';
+    const TOTAL_BY_SESSION = 652;
+    const PRICE = 70;
+    try {
+        const { data, error } = await supabase
+            .from('order_items')
+            .select(`
+                seats:seat_id ( session_id ),
+                orders:order_id ( status )
+            `)
+            .eq('orders.status', 'paid');
+
+        if (error) throw error;
+
+        // conta vendidos só das duas sessões desejadas
+        let sold16 = 0, sold19 = 0;
+
+        for (const it of data || []) {
+            const sess = it?.seats?.session_id;
+            if (!sess) continue;
+            if (sess === ID_16H) sold16++;
+            else if (sess === ID_19H) sold19++;
+        }
+
+        const available16 = Math.max(TOTAL_BY_SESSION - sold16, 0);
+        const available19 = Math.max(TOTAL_BY_SESSION - sold19, 0);
+
+        const revenue16 = sold16 * PRICE;
+        const revenue19 = sold19 * PRICE;
+
+        return res.json({
+            ok: true,
+            sessions: [
+                {
+                    session: '16h',
+                    sold: sold16,
+                    available: available16,
+                    revenue: revenue16
+                },
+                {
+                    session: '19h',
+                    sold: sold19,
+                    available: available19,
+                    revenue: revenue19
+                }
+            ]
+        });
+    } catch (err) {
+        return next(err);
+    }
+}
+
 async function listSales(req, res, next) {
     try {
         const { sessionId: raw, floor, search, page = 1, pageSize = 50 } = req.query;
@@ -90,7 +144,8 @@ async function listSales(req, res, next) {
 
         // itens dos pedidos
         const orderIds = orders.map(o => o.id);
-        let qi = supabase.from('order_items')
+        let qi = supabase
+            .from('order_items')
             .select('order_id, seat_id, seats:seat_id(row_label,seat_number,floor)')
             .in('order_id', orderIds);
         if (floor) qi = qi.eq('seats.floor', String(floor));
@@ -109,8 +164,9 @@ async function listSales(req, res, next) {
         let rows = orders.map(o => ({
             id: o.id,
             buyer: o.user?.name || '—',
-            contact: `${o.user?.email || ''} ${o.user?.phone || ''}`.trim(),
-            userCpf: o.user?.cpf || null,
+            email: o.user?.email || '',
+            phone: o.user?.phone || ''.trim(),
+            cpf: o.user?.cpf || null,
             seats: (byOrder[o.id] || []),
             total: Number(o.total_amount || 0),
             paidAt: o.paid_at,
@@ -293,24 +349,29 @@ async function cancelOrder(req, res, next) {
         const reason = (req.body?.reason || '').slice(0, 500);
 
         const { data: order, error } = await supabase
-            .from('orders').select('id,status,session_id, provider_payment_id')
-            .eq('id', id).single();
+            .from('orders')
+            .select('id,status,session_id, provider_payment_id')
+            .eq('id', id)
+            .single();
         if (error || !order) return res.status(404).json({ ok: false, message: 'Pedido não encontrado' });
 
         if (order.status !== 'paid') {
-            // apenas liberar assentos e cancelar
             await releaseSeatsByOrder(id);
-            await supabase.from('orders').update({ status: 'canceled' }).eq('id', id);
+            await supabase
+                .from('orders')
+                .update({ status: 'canceled' })
+                .eq('id', id);
             return res.json({ ok: true, refunded: false });
         }
 
         // pago: tentar estorno no MP (total)
-        if (!order.provider_payment_id) {
-            return res.status(409).json({ ok: false, message: 'Sem payment_id para estorno' });
-        }
-        await refundPayment(order.provider_payment_id); // estorno total
+        //if (!order.provider_payment_id) return res.status(409).json({ ok: false, message: 'Sem payment_id para estorno' });
+        //await refundPayment(order.provider_payment_id);
         await releaseSeatsByOrder(id);
-        await supabase.from('orders').update({ status: 'refunded' }).eq('id', id);
+        await supabase
+            .from('orders')
+            .update({ status: 'refunded' })
+            .eq('id', id);
 
         res.json({ ok: true, refunded: true });
     } catch (e) { next(e); }
@@ -344,5 +405,6 @@ module.exports = {
     forceRelease,
     searchUsers,
     getUserDetails,
-    cancelOrder
+    cancelOrder,
+    getSessionsSoldCounts
 };

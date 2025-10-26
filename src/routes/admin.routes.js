@@ -5,6 +5,7 @@ const AdminCtrl = require('../controllers/admin.controller');
 router.get('/admin/metrics', AdminCtrl.getDashboardMetrics);
 
 // VENDAS
+router.get('/admin/sales/sold', AdminCtrl.getSessionsSoldCounts);
 router.get('/admin/sales', AdminCtrl.listSales);              // filtros & paginação
 router.get('/admin/sales/export.csv', AdminCtrl.exportSales); // CSV
 router.post('/admin/orders/:id/cancel', AdminCtrl.cancelOrder);

@@ -51,7 +51,7 @@
             <select id="filterSession" class="form-select"></select>
           </div>
 
-          <!---<div class="form-group">
+          <div class="form-group">
             <label for="filterFloor" class="form-label">Andar</label>
             <select id="filterFloor" class="form-select">
               <option value="">Todos os andares</option>
@@ -59,7 +59,7 @@
               <option value="2">Mezanino</option>
               <option value="3">Superior</option>
             </select>
-          </div>-->
+          </div>
 
           <div class="form-group">
             <label for="filterSearch" class="form-label">Buscar</label>
@@ -115,11 +115,11 @@
       <div class="modal-body">
         <p>Tem certeza que deseja cancelar esta venda?</p>
         <div class="cancel-details" id="cancelDetails"></div>
-        <div class="form-group">
+        <!--<div class="form-group">
           <label for="cancelReason" class="form-label">Motivo do Cancelamento</label>
           <textarea id="cancelReason" class="form-textarea" rows="3"
             placeholder="Descreva o motivo do cancelamento..."></textarea>
-        </div>
+        </div>-->
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="AdminSales.closeCancelModal()">Voltar</button>
@@ -145,7 +145,7 @@
 
       // filtros
       document.getElementById('filterSession').addEventListener('change', AdminSales.applyFilters);
-      //document.getElementById('filterFloor').addEventListener('change', AdminSales.applyFilters);
+      document.getElementById('filterFloor').addEventListener('change', AdminSales.applyFilters);
       document.getElementById('filterSearch').addEventListener('input', AdminSales.applyFilters);
 
       // export CSV

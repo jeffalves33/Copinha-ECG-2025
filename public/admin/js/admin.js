@@ -119,11 +119,11 @@ window.AdminDashboard = AdminDashboard;
 const AdminSales = {
   async loadSales() {
     const sess = qs('#filterSession')?.value || '';
-    //const floor = qs('#filterFloor')?.value || '';
+    const floor = qs('#filterFloor')?.value || '';
     const search = qs('#filterSearch')?.value || '';
     const params = new URLSearchParams();
     if (sess) params.set('sessionId', sess);
-    //if (floor) params.set('floor', floor);
+    if (floor) params.set('floor', floor);
     if (search) params.set('search', search);
 
     const { items } = await api('/admin/sales?' + params.toString());
@@ -134,54 +134,62 @@ const AdminSales = {
     const tbody = qs('#salesTable');
     if (!tbody) return;
     if (!items.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="table-empty">Nenhuma venda encontrada</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="table-empty">Nenhuma venda encontrada</td></tr>`;
       return;
     }
     tbody.innerHTML = items.map(it => {
-      const seats = it.seats.map(s => `${s.code}`).join(', ');
       const paidAt = it.paidAt ? new Date(it.paidAt).toLocaleString('pt-BR') : '-';
       const seat = it.sessionId === '9c3c87cb-4107-4d8e-a4ea-c1e8b0084e34' ? '16h' : '19h';
       return `<tr>
-        <td>${it.id.slice(0,8)}</td>
-        <td>${it.buyer.slice(0,8)}</td>
-        <td>${it.email}</td>
-        <td>${it.cpf}</td>
-        <td>${it.phone}</td>
-        <td>${seat}</td>
-        <td>${[...new Set(it.seats.map(s => s.floor))].join(', ')}</td>
-        <td>${seats}</td>
-        <td>${it.method || '-'}</td>
-        <td>${it.installments || 1}x</td>
-        <td>${fmtBRL(it.total)}</td>
-        <td>${paidAt}</td>
-        <td>
-          <button class="btn btn-secondary" onclick="AdminSales.openCancel('${it.id}', '${(it.buyer || '').replace(/'/g, '’')}', '${fmtBRL(it.total)}')">Cancelar</button>
-        </td>
-      </tr>`;
+          <td>${it.orderItemId.slice(0, 8)}</td>
+          <td>${(it.buyer || '').slice(0, 8)}</td>
+          <td>${it.email || ''}</td>
+          <td>${it.cpf || ''}</td>
+          <td>${it.phone || ''}</td>
+          <td>${seat}</td>
+          <td>${it.floor || '-'}</td>
+          <td>${it.seatCode || '-'}</td>
+          <td>${it.method || '-'}</td>
+          <td>${it.installments || 1}x</td>
+          <td>${fmtBRL(it.total)}</td>
+          <td>${paidAt}</td>
+          <td>
+            <button class="btn btn-secondary"
+              onclick="AdminSales.openCancel(
+                '${(it.buyer || '')}',
+                '${it.orderId}',
+                '${it.orderItemId}',
+                '${it.seatId}',
+                '${(it.seatCode || '').replace(/'/g, '’')}',
+                '${fmtBRL(it.total)}'
+              )">
+              Cancelar
+            </button>
+          </td>
+        </tr>`
+        ;
     }).join('');
   },
   exportToCSV() {
     location.href = '/api/admin/sales/export.csv';
   },
-  openCancel(id, buyer, total) {
-    window.__cancelOrderId = id;
+  openCancel(buyer, orderId, orderItemId, seatId, seatCode, priceBRL) {
+    window.__cancel = { orderId, orderItemId, seatId };
     const box = qs('#cancelDetails');
-    if (box) box.innerHTML = `<p><strong>Pedido:</strong> ${id}<br/><strong>Cliente:</strong> ${buyer}<br/><strong>Valor:</strong> ${total}</p>`;
-    const m = qs('#cancelModal'); if (m) m.style.display = 'block';
+    if (box) box.innerHTML = `<p><strong>Pedido:</strong> ${orderItemId}<br/><strong>Cliente:</strong> ${buyer}<br/><strong>Valor:</strong> ${priceBRL}</p>`;
+    const m = qs('#cancelModal');
+    if (m) m.style.display = 'block';
   },
   closeCancelModal() { const m = qs('#cancelModal'); if (m) m.style.display = 'none' },
   async confirmCancel() {
-    const reason = qs('#cancelReason')?.value || '';
     try {
-      const r = await api(`/admin/orders/${window.__cancelOrderId}/cancel`, {
-        method: 'POST',
-        body: JSON.stringify({ reason })
-      });
-      //alert(r.refunded ? 'Venda estornada e cancelada.' : 'Venda cancelada.');
+      const { orderId, orderItemId, seatId } = window.__cancel || {};
+      if (!orderId || !orderItemId || !seatId) throw new Error('Dados incompletos do cancelamento.');
+      await api(`/admin/orders/${orderId}/items/${orderItemId}?seatId=${encodeURIComponent(seatId)}`, { method: 'DELETE' });
       this.closeCancelModal();
-      this.loadSales();
+      await this.loadSales(); // recarrega a lista por ingresso
     } catch (e) {
-      alert('Não foi possível cancelar: ' + e.message);
+      alert('Falha ao cancelar: ' + (e?.message || e));
     }
   }
 };

@@ -251,3 +251,104 @@ begin
   return jsonb_build_object('ok', true);
 end;
 $$;
+
+
+-- Função transacional para cancelar apenas UM ingresso (order_item)
+create or replace function admin_cancel_order_item(
+  p_order_id uuid,
+  p_order_item_id uuid,
+  p_seat_id uuid,
+  p_actor uuid default null
+)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_o        orders%rowtype;
+  v_oi       order_items%rowtype;
+  v_s        seats%rowtype;
+  v_itens    int;
+  v_new_total numeric(10,2);
+  v_resp     jsonb;
+begin
+  -- 1) Carrega e trava as linhas envolvidas
+  select * into v_oi from order_items where id = p_order_item_id for update;
+  if not found then
+    -- idempotência: se já não existe, retorna OK
+    return jsonb_build_object('removed', true, 'order_deleted', false, 'new_order_total', null);
+  end if;
+
+  if v_oi.order_id <> p_order_id then
+    raise exception 'Item não pertence ao pedido informado.' using errcode = '23514';
+  end if;
+
+  select * into v_o from orders where id = p_order_id for update;
+  if not found then
+    raise exception 'Pedido não encontrado.' using errcode = '23514';
+  end if;
+
+  select * into v_s from seats where id = p_seat_id for update;
+  if not found then
+    raise exception 'Assento não encontrado.' using errcode = '23514';
+  end if;
+
+  if v_oi.seat_id <> p_seat_id then
+    raise exception 'Item não corresponde ao assento informado.' using errcode = '23514';
+  end if;
+
+  if v_s.session_id <> v_o.session_id then
+    raise exception 'Sessão do assento difere da sessão do pedido.' using errcode = '23514';
+  end if;
+
+  -- 2) Regras simples de negócio (ajuste se quiser bloquear checked_in)
+  if v_o.status = 'paid' and v_oi.status = 'checked_in' then
+    raise exception 'Não é permitido cancelar item já utilizado (checked_in).';
+  end if;
+
+  -- >>> Se quiser obrigar estorno antes, você pode checar aqui e abortar se não houver flag de estorno <<<
+
+  -- 3) Libera a poltrona
+  update seats
+     set status = 'available',
+         reserve_expires = null,
+         reserve_token = null
+   where id = p_seat_id;
+
+  -- 4) Remove o item
+  delete from order_items where id = p_order_item_id;
+
+  -- 5) Reconta itens restantes do pedido
+  select count(*) into v_itens from order_items where order_id = p_order_id;
+
+  if v_itens = 0 then
+    -- Sem itens restantes: apaga o pedido
+    delete from orders where id = p_order_id;
+    v_resp := jsonb_build_object(
+      'removed', true,
+      'order_deleted', true,
+      'new_order_total', null
+    );
+  else
+    -- Ajusta o total do pedido (opção simples: subtrair o price do item)
+    v_new_total := coalesce(v_o.total_amount, 0) - coalesce(v_oi.price, 0);
+    if v_new_total < 0 then v_new_total := 0; end if;
+
+    update orders
+       set total_amount = v_new_total,
+           updated_at = now()
+     where id = p_order_id;
+
+    v_resp := jsonb_build_object(
+      'removed', true,
+      'order_deleted', false,
+      'new_order_total', v_new_total
+    );
+  end if;
+
+  -- 6) (Opcional) registrar auditoria
+  -- insert into order_events (order_id, order_item_id, event, payload, actor, created_at)
+  -- values (p_order_id, p_order_item_id, 'item_canceled', jsonb_build_object('seat_id', p_seat_id), p_actor, now());
+
+  return v_resp;
+end;
+$$;

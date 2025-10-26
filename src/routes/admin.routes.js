@@ -8,7 +8,8 @@ router.get('/admin/metrics', AdminCtrl.getDashboardMetrics);
 router.get('/admin/sales/sold', AdminCtrl.getSessionsSoldCounts);
 router.get('/admin/sales', AdminCtrl.listSales);              // filtros & paginação
 router.get('/admin/sales/export.csv', AdminCtrl.exportSales); // CSV
-router.post('/admin/orders/:id/cancel', AdminCtrl.cancelOrder);
+//router.post('/admin/orders/:id/cancel', AdminCtrl.cancelOrder);
+router.delete('/admin/orders/:orderId/items/:orderItemId', AdminCtrl.cancelOrderItem);
 
 // ASSENTOS
 router.get('/admin/seats', AdminCtrl.listSeats);              // filtros

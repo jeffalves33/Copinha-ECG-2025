@@ -131,7 +131,7 @@ async function listSales(req, res, next) {
         const sessionId = await resolveSessionId(raw);
 
         let q = supabase.from('orders')
-            .select('id,total_amount,paid_at,session_id,status,user_id,payment_method,installments, user:user_id(name,email,phone,cpf)')
+            .select('id,total_amount,paid_at,session_id,status,user_id,payment_method,installments, user:user_id(name,email,phone,cpf), order_items(id,order_id,seat_id,price,status,ticket_image_url,created_at,seat:seat_id (row_label, seat_number, floor))')
             .eq('status', 'paid')
             .order('paid_at', { ascending: false });
 
@@ -142,54 +142,47 @@ async function listSales(req, res, next) {
         if (error) throw error;
         if (!orders?.length) return res.json({ ok: true, items: [], total: 0 });
 
-        // itens dos pedidos
-        const orderIds = orders.map(o => o.id);
-        let qi = supabase
-            .from('order_items')
-            .select('order_id, seat_id, seats:seat_id(row_label,seat_number,floor)')
-            .in('order_id', orderIds);
-        if (floor) qi = qi.eq('seats.floor', String(floor));
-        const { data: items, error: e2 } = await qi;
-        if (e2) throw e2;
+        let rows = [];
+        for (const o of orders) {
+            for (const it of (o.order_items || [])) {
+                // filtro por andar (opcional): se vier "floor" no query, aplica aqui
+                if (floor && String(it?.seat?.floor) !== String(floor)) continue;
 
-        // agrega por pedido
-        const byOrder = {};
-        for (const it of (items || [])) {
-            (byOrder[it.order_id] ||= []).push({
-                code: fmtSeat(it.seats),
-                floor: it.seats.floor
-            });
+                rows.push({
+                    orderId: o.id,
+                    orderItemId: it.id,
+                    seatId: it.seat_id,
+                    buyer: o.user?.name || '—',
+                    email: o.user?.email || '',
+                    phone: (o.user?.phone || '').trim(),
+                    cpf: o.user?.cpf || null,
+                    seatCode: fmtSeat(it.seat),
+                    floor: it.seat?.floor || null,
+                    method: (o.payment_method || '').toUpperCase() || 'CARD',
+                    installments: Number(o.installments || 1),
+                    total: Number(it.price || 0),
+                    paidAt: o.paid_at,
+                    sessionId: o.session_id,
+                });
+            }
         }
-
-        let rows = orders.map(o => ({
-            id: o.id,
-            buyer: o.user?.name || '—',
-            email: o.user?.email || '',
-            phone: o.user?.phone || ''.trim(),
-            cpf: o.user?.cpf || null,
-            seats: (byOrder[o.id] || []),
-            total: Number(o.total_amount || 0),
-            paidAt: o.paid_at,
-            sessionId: o.session_id,
-            method: (o.payment_method || '').toUpperCase() || 'CARD',
-            installments: Number(o.installments || 1)
-        }));
 
         if (search) {
             const s = search.toLowerCase();
             rows = rows.filter(r =>
-                r.id.includes(s) ||
+                (r.orderId || '').toLowerCase().includes(s) ||
+                (r.orderItemId || '').toLowerCase().includes(s) ||
                 (r.buyer || '').toLowerCase().includes(s) ||
-                (r.contact || '').toLowerCase().includes(s) ||
-                r.seats.some(se => se.code.toLowerCase().includes(s)));
+                (r.email || '').toLowerCase().includes(s) ||
+                (r.seatCode || '').toLowerCase().includes(s)
+            );
         }
 
-        // paginação simples em memória (dados são pequenos)
         const start = (Number(page) - 1) * Number(pageSize);
         const end = start + Number(pageSize);
         const pageRows = rows.slice(start, end);
 
-        res.json({ ok: true, items: pageRows, total: rows.length });
+        return res.json({ ok: true, items: pageRows, total: rows.length });
     } catch (e) { next(e); }
 }
 
@@ -343,59 +336,30 @@ async function getUserDetails(req, res, next) {
     } catch (e) { next(e); }
 }
 
-async function cancelOrder(req, res, next) {
-    try {
-        const { id } = req.params;
-        const reason = (req.body?.reason || '').slice(0, 500);
+async function cancelOrderItem (req, res, next) {
+  try {
+    const { orderId, orderItemId } = req.params;
+    const seatId = req.query.seatId;
 
-        const { data: order, error } = await supabase
-            .from('orders')
-            .select('id,status,session_id, provider_payment_id')
-            .eq('id', id)
-            .single();
-        if (error || !order) return res.status(404).json({ ok: false, message: 'Pedido não encontrado' });
+    if (!orderId || !orderItemId || !seatId) {
+      return res.status(400).json({ ok: false, error: 'orderId, orderItemId e seatId são obrigatórios.' });
+    }
 
-        if (order.status !== 'paid') {
-            await releaseSeatsByOrder(id);
-            await supabase
-                .from('orders')
-                .update({ status: 'canceled' })
-                .eq('id', id);
-            return res.json({ ok: true, refunded: false });
-        }
+    // opcional: pegue o usuário autenticado p/ auditoria
+    const actor = req.user?.id || null;
+    const { data, error } = await supabase.rpc('admin_cancel_order_item', {
+      p_order_id: orderId,
+      p_order_item_id: orderItemId,
+      p_seat_id: seatId,
+      p_actor: actor
+    });
 
-        // pago: tentar estorno no MP (total)
-        //if (!order.provider_payment_id) return res.status(409).json({ ok: false, message: 'Sem payment_id para estorno' });
-        //await refundPayment(order.provider_payment_id);
-        await releaseSeatsByOrder(id);
-        await supabase
-            .from('orders')
-            .update({ status: 'refunded' })
-            .eq('id', id);
+    if (error) throw error;
 
-        res.json({ ok: true, refunded: true });
-    } catch (e) { next(e); }
-}
-
-// util: liberar assentos de um pedido
-async function releaseSeatsByOrder(orderId) {
-    // pega seats do pedido
-    const { data: items } = await supabase
-        .from('order_items')
-        .select('seat_id, seats:seat_id(session_id,floor,row_label,seat_number)')
-        .eq('order_id', orderId);
-
-    if (!items?.length) return;
-
-    // volta para available (se não houver outra trava de negócio)
-    const updates = items.map(i => ({
-        id: i.seat_id,
-        status: 'available',
-        reserve_token: null,
-        reserve_expires: null
-    }));
-    await supabase.from('seats').upsert(updates);
-}
+    // data: { removed: true, order_deleted: boolean, new_order_total: number|null }
+    return res.json({ ok: true, ...data });
+  } catch (e) { next(e); }
+};
 
 module.exports = {
     getDashboardMetrics,
@@ -405,6 +369,6 @@ module.exports = {
     forceRelease,
     searchUsers,
     getUserDetails,
-    cancelOrder,
+    cancelOrderItem,
     getSessionsSoldCounts
 };

@@ -125,6 +125,16 @@
                 </div>
               </div>
 
+              <!-- PRE-SALE: CPF da Aluna (temporário) -->
+              <div class="form-group" id="student-cpf-group">
+                <label for="studentCpf" class="form-label">CPF da Aluna (filha) *</label>
+                <input type="text" id="studentCpf" class="form-input" placeholder="000.000.000-00" required
+                  aria-required="true" autocomplete="off">
+                <div class="form-error" id="student-cpf-error" style="display:none;">
+                  ⚠️ Por favor, digite um CPF de aluna válido
+                </div>
+              </div>
+
               <div class="form-group">
                 <label for="cpf" class="form-label">CPF *</label>
                 <input type="text" id="cpf" class="form-input" placeholder="000.000.000-00" required
@@ -249,9 +259,14 @@
       event.preventDefault();
 
       const name = document.getElementById('name').value.trim();
-      const email = document.getElementById('email').value.trim();    // opcional na validação de identidade
+      const email = document.getElementById('email').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const cpf = document.getElementById('cpf').value.trim();
+      const studentCpf = document.getElementById('studentCpf')?.value.trim();
+      const studentCpfOk = isValidCPF(studentCpf);
+
+      document.getElementById('student-cpf-error').style.display = studentCpfOk ? 'none' : 'block';
+
       const cpfOk = isValidCPF(cpf);
       const phoneOk = onlyDigits(phone).length >= 10;
 
@@ -259,7 +274,7 @@
       document.getElementById('phone-error').style.display = phoneOk ? 'none' : 'block';
       document.getElementById('name-error').style.display = name ? 'none' : 'block';
 
-      if (!name || !cpfOk || !phoneOk) return;
+      if (!name || !cpfOk || !phoneOk || !studentCpfOk) return;
 
       const sessionId = sessionStorage.getItem('sessionId');
       const seats = JSON.parse(sessionStorage.getItem('selectedSeats') || '[]');
@@ -271,7 +286,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          buyer: { name, email, phone, cpf },  // << envia CPF
+          buyer: { name, email, phone, cpf },
+          studentCpf,
           reserveToken, seats, price
         })
       });

@@ -2,10 +2,80 @@ const { supabase } = require('../services/supabase');
 const { createCheckoutPreference } = require('../services/mercadoPago.service');
 const { getOrCreateUser } = require('../services/user.service');
 
+const PRE_SALE_ENABLED = process.env.PRE_SALE_ENABLED === 'true';
+const PRE_SALE_DEFAULT_MAX = Number(process.env.PRE_SALE_MAX_PER_CPF || 3);
+const onlyDigits = (s) => (s || '').replace(/\D/g, '');
+
 async function checkout(req, res, next) {
-    const clientIp = req.ip; // opcional p/ logs
     try {
         const { sessionId, buyer, reserveToken, seats, price } = req.body;
+        const studentCpf = onlyDigits(req.body.studentCpf || buyer?.studentCpf);
+
+        // ===== PRE-SALE (temporário, removível) =====
+        if (PRE_SALE_ENABLED) {
+            // CPF de aluna obrigatório e válido
+            if (!studentCpf || studentCpf.length !== 11) {
+                return res.status(400).json({ ok: false, message: 'Informe um CPF de aluna válido.' });
+            }
+
+            // Precisa estar na lista branca
+            const { data: stu, error: stuErr } = await supabase
+                .from('pre_sale_students')
+                .select('student_cpf, max_tickets')
+                .eq('student_cpf', studentCpf)
+                .single();
+
+            if (stuErr || !stu) {
+                return res.status(403).json({
+                    ok: false,
+                    message: 'Pré-venda exclusiva para pais. CPF de aluna não encontrado na lista.'
+                });
+            }
+
+            // Quantos ingressos já foram usados por este CPF de aluna?
+            const { data: pso, error: psoErr } = await supabase
+                .from('pre_sale_orders')
+                .select('order_id')
+                .eq('student_cpf', studentCpf);
+
+            if (psoErr) throw psoErr;
+
+            const prevOrderIds = (pso || []).map(r => r.order_id);
+
+            let activeOrderIds = [];
+            if (prevOrderIds.length) {
+                const { data: act, error: actErr } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .in('id', prevOrderIds)
+                    .in('status', ['awaiting_payment', 'paid']);
+                if (actErr) throw actErr;
+                activeOrderIds = (act || []).map(o => o.id);
+            }
+
+            let used = 0;
+            if (activeOrderIds.length) {
+                const { data: items, error: itemsErr } = await supabase
+                    .from('order_items')
+                    .select('id, status')
+                    .in('order_id', activeOrderIds)
+                    .neq('status', 'void');
+
+                if (itemsErr) throw itemsErr;
+                used = (items || []).length;
+            }
+
+            const maxAllowed = Number(stu.max_tickets ?? PRE_SALE_DEFAULT_MAX);
+            const intended = Array.isArray(seats) ? seats.length : 0;
+
+            if (used + intended > maxAllowed) {
+                return res.status(403).json({
+                    ok: false,
+                    message: `Limite de ${maxAllowed} ingressos por CPF de aluna. Já utilizados: ${used}.`
+                });
+            }
+        }
+        // ===== /PRE-SALE =====
 
         // 1) validação simples
         if (!buyer?.name || !buyer?.cpf || !buyer?.phone) {
@@ -68,6 +138,24 @@ async function checkout(req, res, next) {
             .single();
 
         if (oerr) throw oerr;
+
+        // ===== PRE-SALE: vincular pedido ao CPF da aluna (temporário) =====
+        // Este bloco pressupõe que você já validou studentCpf e o limite ANTES.
+        // Mesmo assim, para robustez, normalizamos aqui também.
+        if (process.env.PRE_SALE_ENABLED === 'true') {
+            const studentCpf = String((req.body.studentCpf || (req.body.buyer?.studentCpf) || '')).replace(/\D/g, '');
+            if (!studentCpf) {
+                // Segurança defensiva: se por algum motivo faltou no body, recusa o checkout
+                return res.status(400).json({ ok: false, message: 'Informe o CPF da aluna.' });
+            }
+
+            const { error: linkErr } = await supabase
+                .from('pre_sale_orders')
+                .insert([{ order_id: order.id, student_cpf: studentCpf }]);
+
+            if (linkErr) throw linkErr;
+        }
+        // ===== /PRE-SALE =====
 
         // 4) criar itens + (opcional) sombra do TTL
         const seatIdMap = new Map(

@@ -112,6 +112,35 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 else console.log('[MP] order marked as paid', upd1);
                 await ensureQrTokensForOrder(order.id);
 
+                // ==== ENVIO DE INGRESSOS POR E-MAIL ====
+                const { sendTicketsEmail } = require('../services/email.service');
+                try {
+                    // buscar comprador e ingressos
+                    const { data: user } = await supabase
+                        .from('users')
+                        .select('name,email')
+                        .eq('id', order.user_id)
+                        .single();
+
+                    const { data: items } = await supabase
+                        .from('order_items')
+                        .select('qr_token, seat_id, seats:seat_id(row_label, seat_number)')
+                        .eq('order_id', order.id);
+
+                    const tickets = (items || []).map(it => ({
+                        qr_token: it.qr_token,
+                        code: `${it.seats.row_label}-${String(it.seats.seat_number).padStart(2, '0')}`,
+                    }));
+
+                    await sendTicketsEmail({
+                        to: user?.email,
+                        name: user?.name || 'Cliente',
+                        orderId: order.id,
+                        tickets,
+                    });
+                } catch (e) {
+                    console.error('[MAIL] erro pós-pagamento', e);
+                }
 
                 // 4) seats do pedido -> sold
                 const { data: items } = await supabase
@@ -177,6 +206,35 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 else console.log('[MP] order marked as paid', upd2);
                 await ensureQrTokensForOrder(order.id);
 
+                // ==== ENVIO DE INGRESSOS POR E-MAIL ====
+                const { sendTicketsEmail } = require('../services/email.service');
+                try {
+                    // buscar comprador e ingressos
+                    const { data: user } = await supabase
+                        .from('users')
+                        .select('name,email')
+                        .eq('id', order.user_id)
+                        .single();
+
+                    const { data: items } = await supabase
+                        .from('order_items')
+                        .select('qr_token, seat_id, seats:seat_id(row_label, seat_number)')
+                        .eq('order_id', order.id);
+
+                    const tickets = (items || []).map(it => ({
+                        qr_token: it.qr_token,
+                        code: `${it.seats.row_label}-${String(it.seats.seat_number).padStart(2, '0')}`,
+                    }));
+
+                    await sendTicketsEmail({
+                        to: user?.email,
+                        name: user?.name || 'Cliente',
+                        orderId: order.id,
+                        tickets,
+                    });
+                } catch (e) {
+                    console.error('[MAIL] erro pós-pagamento', e);
+                }
 
                 const { data: items } = await supabase
                     .from('order_items')

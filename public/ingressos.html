@@ -226,53 +226,49 @@
         state.textContent = '';
 
         const orders = data.tickets || [];
+
         if (!orders.length) { empty.style.display = 'block'; return; }
 
-        // Render
-
         orders.forEach((order, idx) => {
-          const card = document.createElement('div');
-          card.className = 'card fade-in';
-          card.style.marginBottom = 'var(--spacing-md)';
-          card.style.padding = 'var(--spacing-lg)';
-          card.style.display = 'flex';
-          card.style.flexDirection = 'column';
-          card.style.gap = '10px';
-          card.style.animationDelay = (idx * 0.05) + 's';
-
+          const orderSession = order.session?.name;
+          const tickets = order.seats || [];
           const paidAt = order.paidAt ? new Date(order.paidAt).toLocaleString('pt-BR') : '—';
-          const seats = order.seats?.map(s => s.code).join(', ') || '—';
-          const floors = [...new Set(order.seats.map(s => s.floor))].join(', ') || '—';
+          const orderId = order.orderId;
 
-          const firstSeat = order.seats?.[0];
-          const statusText = firstSeat?.checkedInAt
-            ? `Usado em ${new Date(firstSeat.checkedInAt).toLocaleString('pt-BR')}`
-            : 'Aguardando check-in';
+          tickets.forEach((ticket, idx) => {
+            const card = document.createElement('div');
+            card.className = 'card fade-in';
+            card.style.marginBottom = 'var(--spacing-md)';
+            card.style.padding = 'var(--spacing-lg)';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.gap = '10px';
+            card.style.animationDelay = (idx * 0.05) + 's';
 
-          card.innerHTML = `
-            <div class="ticket-grid">
-              <!-- linha 1 -->
-              <div class="title">🎫 <span>Pedido ${order.orderId.slice(0, 8)}...</span></div>
-              <div class="date muted" style="font-size:0.9em;">${paidAt}</div>
+            const statusText = ticket?.checkedInAt ? `Usado em ${new Date(ticket.checkedInAt).toLocaleString('pt-BR')}` : 'Aguardando check-in';
 
-              <!-- linha 2 -->
-              <div class="muted">Sessão <strong>${order.session.name}</strong> • Andar <strong>${floors}</strong> • Assento: <strong>${seats}</strong></div>
-              <div class="action">
-                ${firstSeat?.downloadUrl
-              ? `<a href="${firstSeat.downloadUrl}" class="btn btn-primary btn-compact">Baixar PDF</a>`
-              : `<span class="muted" style="font-size:0.9em">PDF indisponível</span>`}
+            card.innerHTML = `
+              <div class="ticket-grid">
+                <!-- linha 1 -->
+                <div class="title">🎫 <span>Pedido ${orderId.slice(0, 8)}...</span></div>
+                <div class="date muted" style="font-size:0.9em;">${paidAt}</div>
+
+                <!-- linha 2 -->
+                <div class="muted">Sessão <strong>${orderSession}</strong> • Andar <strong>${ticket.floor}</strong> • Assento: <strong>${ticket.code}</strong></div>
+                <div class="action">
+                  ${ticket?.downloadUrl
+                ? `<a href="${ticket.downloadUrl}" class="btn btn-primary btn-compact">Baixar PDF</a>`
+                : `<span class="muted" style="font-size:0.9em">PDF indisponível</span>`}
+                </div>
+
+                <!-- linha 3 -->
+                <div class="muted" style="font-size:0.85em">${statusText}</div>
+                <div></div>
               </div>
+            `;
 
-              <!-- linha 3 -->
-              <div class="muted" style="font-size:0.85em">${statusText}</div>
-              <div></div>
-            </div>
-          `;
-
-
-
-
-          list.appendChild(card);
+            list.appendChild(card);
+          });
         });
 
       }

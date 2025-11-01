@@ -139,7 +139,7 @@ const AdminSales = {
     }
     tbody.innerHTML = items.map(it => {
       const paidAt = it.paidAt ? new Date(it.paidAt).toLocaleString('pt-BR') : '-';
-      const seat = it.sessionId === '9c3c87cb-4107-4d8e-a4ea-c1e8b0084e34' ? '16h' : '19h';
+      const seat = it.sessionId === 'a6e2b3cd-9800-4169-8f11-39ae32cc783b' ? '16h' : '19h';
       return `<tr>
           <td>${it.orderItemId.slice(0, 8)}</td>
           <td>${(it.buyer || '').slice(0, 8)}</td>

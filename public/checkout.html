@@ -125,13 +125,14 @@
                 </div>
               </div>
 
-              <!-- PRE-SALE: CPF da Aluna (temporário) -->
-              <div class="form-group" id="student-cpf-group">
-                <label for="studentCpf" class="form-label">CPF da Aluna (filha) *</label>
-                <input type="text" id="studentCpf" class="form-input" placeholder="000.000.000-00" required
-                  aria-required="true" autocomplete="off">
-                <div class="form-error" id="student-cpf-error" style="display:none;">
-                  ⚠️ Por favor, digite um CPF de aluna válido
+              <!-- PRÉ-VENDA: CPF DA ALUNA -->
+              <div class="form-group" id="student-cpf-group" style="display:none;">
+                <label for="studentCpf" class="form-label">CPF da Aluna (pré-venda) *</label>
+                <input type="text" id="studentCpf" class="form-input" placeholder="000.000.000-00" autocomplete="off">
+                <div class="form-error" id="studentCpf-error" style="display:none;">
+                  ⚠️ Informe um CPF válido da aluna
+                </div>
+                <div class="form-helper">Durante a pré-venda, cada CPF de aluna pode comprar no máximo 3 ingressos.
                 </div>
               </div>
 
@@ -255,6 +256,7 @@
       return rest === Number(cpf[10]);
     }
 
+
     async function handleCheckout(event) {
       event.preventDefault();
 
@@ -262,10 +264,10 @@
       const email = document.getElementById('email').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const cpf = document.getElementById('cpf').value.trim();
-      const studentCpf = document.getElementById('studentCpf')?.value.trim();
-      const studentCpfOk = isValidCPF(studentCpf);
+      const studentCpf = (document.getElementById('studentCpf')?.value || '').trim();
+      const studentCpfOk = PRE_SALE_ENABLED ? isValidCPF(studentCpf) : true;
 
-      document.getElementById('student-cpf-error').style.display = studentCpfOk ? 'none' : 'block';
+      document.getElementById('studentCpf-error').style.display = studentCpfOk ? 'none' : 'block';
 
       const cpfOk = isValidCPF(cpf);
       const phoneOk = onlyDigits(phone).length >= 10;
@@ -301,6 +303,36 @@
       if (!resp.ok) { alert(resp.message || 'Erro no checkout.'); return; }
       window.location.href = resp.checkoutUrl;
     }
+  </script>
+  <script>
+    let PRE_SALE_ENABLED = false;
+    let PRE_SALE_MAX = 3;
+
+    // Mostrar/esconder campo de pré-venda com base no backend
+    fetch('/api/pre-sale/config')
+      .then(r => r.json())
+      .then(cfg => {
+        PRE_SALE_ENABLED = !!cfg.enabled;
+        PRE_SALE_MAX = Number(cfg.max || 3);
+        if (PRE_SALE_ENABLED) {
+          document.getElementById('student-cpf-group').style.display = 'block';
+        }
+      })
+      .catch(() => { }); // se falhar, tudo segue normal (campo oculto)
+
+    // Máscara de CPF para a aluna
+    (function () {
+      const el = document.getElementById('studentCpf');
+      if (!el) return;
+      el.addEventListener('input', function (e) {
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 11) v = v.slice(0, 11);
+        if (v.length > 9) e.target.value = `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`;
+        else if (v.length > 6) e.target.value = `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`;
+        else if (v.length > 3) e.target.value = `${v.slice(0, 3)}.${v.slice(3)}`;
+        else e.target.value = v;
+      });
+    })();
   </script>
   <script>
     (function () {

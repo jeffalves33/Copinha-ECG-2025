@@ -3,79 +3,71 @@ const { createCheckoutPreference } = require('../services/mercadoPago.service');
 const { getOrCreateUser } = require('../services/user.service');
 
 const PRE_SALE_ENABLED = process.env.PRE_SALE_ENABLED === 'true';
-const PRE_SALE_DEFAULT_MAX = Number(process.env.PRE_SALE_MAX_PER_CPF || 3);
-const onlyDigits = (s) => (s || '').replace(/\D/g, '');
+const PRE_SALE_MAX = Number(process.env.PRE_SALE_MAX_PER_CPF || 3);
+const onlyDigits = (v) => (v || '').replace(/\D/g, '');
 
 async function checkout(req, res, next) {
     try {
         const { sessionId, buyer, reserveToken, seats, price } = req.body;
-        const studentCpf = onlyDigits(req.body.studentCpf || buyer?.studentCpf);
 
-        // ===== PRE-SALE (temporário, removível) =====
+        // --- BLOCO PRÉ-VENDA (simples e removível) ---
+        const studentCpf = onlyDigits(req.body.studentCpf);
+
         if (PRE_SALE_ENABLED) {
-            // CPF de aluna obrigatório e válido
-            if (!studentCpf || studentCpf.length !== 11) {
-                return res.status(400).json({ ok: false, message: 'Informe um CPF de aluna válido.' });
+            // 0) exigir CPF da aluna
+            if (!studentCpf) {
+                return res.status(412).json({
+                    ok: false,
+                    message: 'Informe o CPF da aluna para a pré-venda.'
+                });
             }
 
-            // Precisa estar na lista branca
-            const { data: stu, error: stuErr } = await supabase
+            // 1) conferir whitelist
+            const { data: studentRow, error: studentErr } = await supabase
                 .from('pre_sale_students')
-                .select('student_cpf, max_tickets')
+                .select('student_cpf,max_tickets')
                 .eq('student_cpf', studentCpf)
                 .single();
 
-            if (stuErr || !stu) {
+            if (studentErr || !studentRow) {
                 return res.status(403).json({
                     ok: false,
-                    message: 'Pré-venda exclusiva para pais. CPF de aluna não encontrado na lista.'
+                    message: 'CPF da aluna não habilitado para a pré-venda.'
                 });
             }
 
-            // Quantos ingressos já foram usados por este CPF de aluna?
-            const { data: pso, error: psoErr } = await supabase
+            const maxTickets = Number(studentRow.max_tickets ?? PRE_SALE_MAX);
+
+            // 2) contar ingressos já utilizados por esse CPF
+            let used = 0;
+            const { data: preOrders, error: pErr } = await supabase
                 .from('pre_sale_orders')
                 .select('order_id')
                 .eq('student_cpf', studentCpf);
+            if (pErr) throw pErr;
 
-            if (psoErr) throw psoErr;
-
-            const prevOrderIds = (pso || []).map(r => r.order_id);
-
-            let activeOrderIds = [];
-            if (prevOrderIds.length) {
-                const { data: act, error: actErr } = await supabase
-                    .from('orders')
-                    .select('id')
-                    .in('id', prevOrderIds)
-                    .in('status', ['awaiting_payment', 'paid']);
-                if (actErr) throw actErr;
-                activeOrderIds = (act || []).map(o => o.id);
+            if (preOrders && preOrders.length) {
+                const orderIds = preOrders.map(o => o.order_id);
+                if (orderIds.length) {
+                    const { count, error: cErr } = await supabase
+                        .from('order_items')
+                        .select('id', { count: 'exact', head: true })
+                        .in('order_id', orderIds)
+                        .in('status', ['reserved', 'issued', 'checked_in']);
+                    if (cErr) throw cErr;
+                    used = count || 0;
+                }
             }
 
-            let used = 0;
-            if (activeOrderIds.length) {
-                const { data: items, error: itemsErr } = await supabase
-                    .from('order_items')
-                    .select('id, status')
-                    .in('order_id', activeOrderIds)
-                    .neq('status', 'void');
-
-                if (itemsErr) throw itemsErr;
-                used = (items || []).length;
-            }
-
-            const maxAllowed = Number(stu.max_tickets ?? PRE_SALE_DEFAULT_MAX);
-            const intended = Array.isArray(seats) ? seats.length : 0;
-
-            if (used + intended > maxAllowed) {
-                return res.status(403).json({
+            // 3) validar limite: já usados + carrinho atual
+            if ((used + seats.length) > maxTickets) {
+                return res.status(409).json({
                     ok: false,
-                    message: `Limite de ${maxAllowed} ingressos por CPF de aluna. Já utilizados: ${used}.`
+                    message: `Limite de ${maxTickets} ingressos por CPF atingido (já utilizados: ${used}).`
                 });
             }
         }
-        // ===== /PRE-SALE =====
+        // --- FIM BLOCO PRÉ-VENDA ---
 
         // 1) validação simples
         if (!buyer?.name || !buyer?.cpf || !buyer?.phone) {
@@ -139,24 +131,6 @@ async function checkout(req, res, next) {
 
         if (oerr) throw oerr;
 
-        // ===== PRE-SALE: vincular pedido ao CPF da aluna (temporário) =====
-        // Este bloco pressupõe que você já validou studentCpf e o limite ANTES.
-        // Mesmo assim, para robustez, normalizamos aqui também.
-        if (process.env.PRE_SALE_ENABLED === 'true') {
-            const studentCpf = String((req.body.studentCpf || (req.body.buyer?.studentCpf) || '')).replace(/\D/g, '');
-            if (!studentCpf) {
-                // Segurança defensiva: se por algum motivo faltou no body, recusa o checkout
-                return res.status(400).json({ ok: false, message: 'Informe o CPF da aluna.' });
-            }
-
-            const { error: linkErr } = await supabase
-                .from('pre_sale_orders')
-                .insert([{ order_id: order.id, student_cpf: studentCpf }]);
-
-            if (linkErr) throw linkErr;
-        }
-        // ===== /PRE-SALE =====
-
         // 4) criar itens + (opcional) sombra do TTL
         const seatIdMap = new Map(
             seatRows.map(s => [`${s.row_label}-${String(s.seat_number).padStart(2, '0')}`, s.id])
@@ -170,6 +144,13 @@ async function checkout(req, res, next) {
         }));
         const { error: ierr } = await supabase.from('order_items').insert(itemsPayload);
         if (ierr) throw ierr;
+
+        if (PRE_SALE_ENABLED) {
+            const { error: psErr } = await supabase
+                .from('pre_sale_orders')
+                .insert([{ order_id: order.id, student_cpf: studentCpf }]);
+            if (psErr) throw psErr;
+        }
 
         // 5) gerar checkout do MP
         const mpItems = seats.map(code => ({ code, price: Number(price) }));

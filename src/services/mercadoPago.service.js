@@ -9,12 +9,12 @@ async function createCheckoutPreference({ orderId, buyer, items }) {
         const response = await new Preference(mercadopago).create({
             body: {
                 items: items.map((it) => ({
-                    title: `Ingresso Copinha ECG`,
+                    title: `Ingresso Espetáculo ECG`,
                     quantity: 1,
                     currency_id: 'BRL',
                     unit_price: Number(it.price),
                     category_id: "services",
-                    description: "Quantidade de ingressos para evento Copinha ECG"
+                    description: "Quantidade de ingressos para evento Espetáculo ECG"
                 })),
                 payer: {
                     name: buyer.name,

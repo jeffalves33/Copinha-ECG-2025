@@ -95,7 +95,7 @@ router.get('/tickets/:token/pdf', async (req, res, next) => {
 
         // Logo/Título
         let yPos = height - 45;
-        page.drawText('COPINHA ECG', {
+        page.drawText('Espetáculo ECG', {
             x: 25,
             y: yPos,
             size: 22,

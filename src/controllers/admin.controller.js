@@ -24,6 +24,16 @@ async function resolveSessionId(sessionIdOrName) {
     return s?.id ?? null;
 }
 
+async function getCredentials(req, res, next) {
+    const { password } = req.body || {};
+    const expected = process.env.ADMIN_PASSWORD;
+
+    if (!password) return res.status(400).json({ ok: false, message: 'Senha obrigatória.' });
+    if (password === expected) return res.json({ ok: true });
+
+    return res.status(401).json({ ok: false, message: 'Senha incorreta.' });
+}
+
 async function getDashboardMetrics(req, res, next) {
     try {
         const raw = req.query.sessionId || null;
@@ -72,10 +82,10 @@ async function getDashboardMetrics(req, res, next) {
 }
 
 async function getSessionsSoldCounts(req, res, next) {
-    const ID_16H = '9c3c87cb-4107-4d8e-a4ea-c1e8b0084e34';
-    const ID_19H = '9882e22d-d089-4b06-82f5-0a838378ba62';
+    const ID_16H = 'a6e2b3cd-9800-4169-8f11-39ae32cc783b';
+    const ID_19H = 'f262d766-a9a6-4ac6-8938-e39e2bbaadf2';
     const TOTAL_BY_SESSION = 652;
-    const PRICE = 70;
+    const PRICE = 1;
     try {
         const { data, error } = await supabase
             .from('order_items')
@@ -186,36 +196,6 @@ async function listSales(req, res, next) {
     } catch (e) { next(e); }
 }
 
-async function exportSales(req, res, next) {
-    try {
-        // recicla listagem (sem paginação)
-        req.query.pageSize = 100000;
-        const { ok, items } = await (async () => {
-            return new Promise((resolve, reject) => {
-                const mRes = {
-                    json: (obj) => resolve(obj)
-                };
-                listSales(req, mRes, reject);
-            });
-        })();
-        if (!ok) return res.status(500).end();
-
-        const rows = items.map(r => ({
-            order_id: r.id,
-            buyer: r.buyer,
-            contact: r.contact,
-            seats: r.seats.map(s => `${s.code} (andar ${s.floor})`).join(' | '),
-            total: r.total,
-            paid_at: r.paidAt
-        }));
-
-        const csv = toCSV(rows);
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="vendas.csv"');
-        res.send(csv);
-    } catch (e) { next(e); }
-}
-
 async function listSeats(req, res, next) {
     try {
         const raw = req.query.sessionId || null;
@@ -264,18 +244,66 @@ async function listSeats(req, res, next) {
 
 async function forceRelease(req, res, next) {
     try {
-        const { sessionId, floor, seats = [] } = req.body; // seats: ["A-03",...]
-        if (!sessionId || !floor || !seats.length) return res.status(400).json({ ok: false, message: 'params' });
+        const { sessionId, floor, seats = [] } = req.body;
 
-        const { error } = await supabase.rpc('seat_release', {
-            p_session_id: sessionId,
-            p_floor: String(floor),
-            p_seat_codes: seats
-        });
-        if (error) throw error;
+        if (!sessionId || floor === undefined || !Array.isArray(seats) || seats.length === 0) {
+            return res.status(400).json({ ok: false, message: 'params' });
+        }
 
-        res.json({ ok: true });
-    } catch (e) { next(e); }
+        const released = [];
+        const skipped = [];
+        const errors = [];
+
+        const parseSeat = (code) => {
+            const [rawRow, rawNum] = String(code).split('-');
+            const row = (rawRow || '').trim().toUpperCase();
+            const num = parseInt((rawNum || '').trim(), 10);
+            if (!row || Number.isNaN(num)) return null;
+            return { row, num };
+        };
+
+        // Força liberação uma a uma (poucas cadeiras → é ok)
+        for (const code of seats) {
+            const parsed = parseSeat(code);
+            if (!parsed) {
+                skipped.push({ code, reason: 'invalid_code' });
+                continue;
+            }
+
+            const { row, num } = parsed;
+
+            // Libera somente se estiver 'reserved' ou 'blocked' (NÃO mexe em 'sold')
+            const { data, error } = await supabase
+                .from('seats')
+                .update({
+                    status: 'available',
+                    reserve_expires: null,
+                    reserve_token: null
+                })
+                .eq('session_id', sessionId)
+                .eq('floor', floor)
+                .eq('row_label', row)
+                .eq('seat_number', num)
+                .in('status', ['reserved', 'blocked'])
+                .select('id'); // retorna linhas afetadas
+
+            if (error) {
+                errors.push({ code, error: String(error.message || error) });
+                continue;
+            }
+
+            if (!data || data.length === 0) {
+                // não encontrada / já disponível / vendida
+                skipped.push({ code, reason: 'not_reserved_or_not_found' });
+            } else {
+                released.push(code);
+            }
+        }
+
+        return res.json({ ok: true, released, skipped, errors });
+    } catch (e) {
+        next(e);
+    }
 }
 
 async function searchUsers(req, res, next) {
@@ -336,35 +364,35 @@ async function getUserDetails(req, res, next) {
     } catch (e) { next(e); }
 }
 
-async function cancelOrderItem (req, res, next) {
-  try {
-    const { orderId, orderItemId } = req.params;
-    const seatId = req.query.seatId;
+async function cancelOrderItem(req, res, next) {
+    try {
+        const { orderId, orderItemId } = req.params;
+        const seatId = req.query.seatId;
 
-    if (!orderId || !orderItemId || !seatId) {
-      return res.status(400).json({ ok: false, error: 'orderId, orderItemId e seatId são obrigatórios.' });
-    }
+        if (!orderId || !orderItemId || !seatId) {
+            return res.status(400).json({ ok: false, error: 'orderId, orderItemId e seatId são obrigatórios.' });
+        }
 
-    // opcional: pegue o usuário autenticado p/ auditoria
-    const actor = req.user?.id || null;
-    const { data, error } = await supabase.rpc('admin_cancel_order_item', {
-      p_order_id: orderId,
-      p_order_item_id: orderItemId,
-      p_seat_id: seatId,
-      p_actor: actor
-    });
+        // opcional: pegue o usuário autenticado p/ auditoria
+        const actor = req.user?.id || null;
+        const { data, error } = await supabase.rpc('admin_cancel_order_item', {
+            p_order_id: orderId,
+            p_order_item_id: orderItemId,
+            p_seat_id: seatId,
+            p_actor: actor
+        });
 
-    if (error) throw error;
+        if (error) throw error;
 
-    // data: { removed: true, order_deleted: boolean, new_order_total: number|null }
-    return res.json({ ok: true, ...data });
-  } catch (e) { next(e); }
+        // data: { removed: true, order_deleted: boolean, new_order_total: number|null }
+        return res.json({ ok: true, ...data });
+    } catch (e) { next(e); }
 };
 
 module.exports = {
+    getCredentials,
     getDashboardMetrics,
     listSales,
-    exportSales,
     listSeats,
     forceRelease,
     searchUsers,

@@ -21,15 +21,15 @@ async function populateSessionsSelect(selectId, includeAll = true) {
   if (!sel) return;
   sel.innerHTML = includeAll ? `<option value="">Todas</option>` : '';
 
-  const r = await fetch('/api/sessions'); // sua rota pública já lista sessões
+  const r = await fetch('/api/sessions');
   if (!r.ok) return;
-  const sessions = await r.json(); // [{id,name,...}]
+  const sessions = await r.json();
 
   sessions.forEach(s => {
     const opt = document.createElement('option');
     // exibe “16:00” se seu name for “16h”
     const label = s.name?.endsWith('h') ? s.name.replace('h', ':00') : s.name;
-    opt.value = s.id;       // <<<<<<<<<<<<<<  usa o UUID aqui!
+    opt.value = s.id;
     opt.textContent = label;
     sel.appendChild(opt);
   });
@@ -51,10 +51,6 @@ function updateCard(prefix, data) {
 function setText(sel, val) {
   const el = document.querySelector(sel);
   if (el) el.textContent = val;
-}
-
-function fmtBRL(n) {
-  return (n ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 // ---------- auth ----------
@@ -89,7 +85,7 @@ const AdminDashboard = {
       el('netRevenue', fmtBRL(d.revenue?.net || 0));
 
       const bd = d.revenue?.feesBreakdown || {};
-      const elBD = qs('#mpFeesBreakdown');
+      /*const elBD = qs('#mpFeesBreakdown');
       if (elBD) {
         const parts = [];
         if (bd.card_mdr) parts.push(`Cartão (4,98%): ${fmtBRL(bd.card_mdr)}`);
@@ -97,7 +93,7 @@ const AdminDashboard = {
         if (bd.installment) parts.push(`Parcelamento (vendedor): ${fmtBRL(bd.installment)}`);
         if (bd.fixed) parts.push(`Tarifa fixa: ${fmtBRL(bd.fixed)}`);
         elBD.innerHTML = parts.length ? parts.join(' • ') : '—';
-      }
+      }*/
 
 
       //Sales
@@ -169,9 +165,6 @@ const AdminSales = {
         </tr>`
         ;
     }).join('');
-  },
-  exportToCSV() {
-    location.href = '/api/admin/sales/export.csv';
   },
   openCancel(buyer, orderId, orderItemId, seatId, seatCode, priceBRL) {
     window.__cancel = { orderId, orderItemId, seatId };
@@ -263,16 +256,26 @@ window.AdminSeats = AdminSeats;
 // ---------- usuários ----------
 const AdminUsers = {
   async loadStats() {
-    // estatísticas simples reaproveitando vendas
-    const { items } = await api('/admin/sales');
-    const orders = items || [];
-    const buyers = new Set(orders.map(o => o.buyer));
-    const totalSold = orders.reduce((acc, o) => acc + o.seats.length, 0);
-    const totalValue = orders.reduce((acc, o) => acc + o.total, 0);
+    // Pega muitas linhas (evita paginação para o card)
+    const { items } = await api('/admin/sales?pageSize=100000');
+    const rows = items || [];
+
+    // total de pedidos = únicos por orderId
+    const orderTotals = new Map(); // orderId -> soma(total)
+    const buyers = new Set();      // usa CPF como id preferencial; se não houver, usa email
+    for (const r of rows) {
+      buyers.add(r.cpf || r.email || r.buyer || ('id:' + r.orderId));
+      orderTotals.set(r.orderId, (orderTotals.get(r.orderId) || 0) + Number(r.total || 0));
+    }
+
+    const totalOrders = orderTotals.size || 0;
+    const totalTickets = rows.length;
+    const sumOrders = Array.from(orderTotals.values()).reduce((a, b) => a + b, 0);
+
     const el = (id, v) => { const e = qs('#' + id); if (e) e.textContent = v; };
     el('totalBuyers', buyers.size);
-    el('avgTickets', orders.length ? (totalSold / orders.length).toFixed(2) : '0');
-    el('avgValue', fmtBRL(orders.length ? (totalValue / orders.length) : 0));
+    el('avgTickets', totalOrders ? (totalTickets / totalOrders).toFixed(2) : '0');
+    el('avgValue', fmtBRL(totalOrders ? (sumOrders / totalOrders) : 0));
   },
   async search() {
     const q = qs('#userSearch')?.value || '';

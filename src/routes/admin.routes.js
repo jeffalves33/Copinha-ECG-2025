@@ -1,13 +1,14 @@
 const router = require('express').Router();
 const AdminCtrl = require('../controllers/admin.controller');
 
+router.post('/admin/credentials', AdminCtrl.getCredentials);
+
 // DASHBOARD / MÉTRICAS
 router.get('/admin/metrics', AdminCtrl.getDashboardMetrics);
 
 // VENDAS
 router.get('/admin/sales/sold', AdminCtrl.getSessionsSoldCounts);
-router.get('/admin/sales', AdminCtrl.listSales);              // filtros & paginação
-router.get('/admin/sales/export.csv', AdminCtrl.exportSales); // CSV
+router.get('/admin/sales', AdminCtrl.listSales);
 //router.post('/admin/orders/:id/cancel', AdminCtrl.cancelOrder);
 router.delete('/admin/orders/:orderId/items/:orderItemId', AdminCtrl.cancelOrderItem);
 

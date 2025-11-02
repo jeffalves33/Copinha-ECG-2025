@@ -66,10 +66,10 @@
             <input type="text" id="filterSearch" class="form-input" placeholder="Nome, e-mail ou ID..." />
           </div>
 
-          <div class="form-group">
+          <!--<div class="form-group">
             <label class="form-label" style="opacity: 0">Ações</label>
             <button id="exportBtn" class="btn btn-secondary btn-full">📥 Exportar CSV</button>
-          </div>
+          </div>-->
         </div>
       </div>
 
@@ -147,9 +147,6 @@
       document.getElementById('filterSession').addEventListener('change', AdminSales.applyFilters);
       document.getElementById('filterFloor').addEventListener('change', AdminSales.applyFilters);
       document.getElementById('filterSearch').addEventListener('input', AdminSales.applyFilters);
-
-      // export CSV
-      document.getElementById('exportBtn').addEventListener('click', AdminSales.exportToCSV);
 
       // logout
       document.getElementById('logoutBtn').addEventListener('click', AdminAuth.logout);

@@ -147,8 +147,8 @@ router.get('/tickets/:token/pdf', async (req, res, next) => {
 
         // DATA/HORA
         yPos -= 26;
-        const when = session?.starts_at ? new Date(session.starts_at).toLocaleString('pt-BR') : '';
-        page.drawText('DATA E HORÁRIO', {
+        const when = session?.starts_at ? new Date(session.starts_at).toLocaleDateString('pt-BR') : '';
+        page.drawText('DATA', {
             x: 25,
             y: yPos,
             size: 8,

@@ -112,35 +112,71 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 else console.log('[MP] order marked as paid', upd1);
                 await ensureQrTokensForOrder(order.id);
 
-                // ==== ENVIO DE INGRESSOS POR E-MAIL ====
-                const { sendTicketsEmail } = require('../services/email.service');
+                // ==== CLAIM: garante que o e-mail será enviado apenas 1x por pedido ====
                 try {
-                    // buscar comprador e ingressos
-                    const { data: user } = await supabase
-                        .from('users')
-                        .select('name,email')
-                        .eq('id', order.user_id)
+                    const nowIso = new Date().toISOString();
+                    const { data: claimed, error: claimErr } = await supabase
+                        .from('orders')
+                        .update({ tickets_emailed_at: nowIso })
+                        .is('tickets_emailed_at', null)   // só atualiza se ainda for null
+                        .eq('id', order.id)
+                        .select('id, tickets_emailed_at')
                         .single();
 
-                    const { data: items } = await supabase
-                        .from('order_items')
-                        .select('qr_token, seat_id, seats:seat_id(row_label, seat_number)')
-                        .eq('order_id', order.id);
+                    if (claimErr) {
+                        console.error('[MAIL][claim] erro ao marcar tickets_emailed_at', { orderId: order.id, claimErr });
+                    }
 
-                    const tickets = (items || []).map(it => ({
-                        qr_token: it.qr_token,
-                        code: `${it.seats.row_label}-${String(it.seats.seat_number).padStart(2, '0')}`,
-                    }));
+                    if (!claimed) {
+                        console.log('[MAIL][skip] e-mail já enviado para este pedido — ignorando novo envio', { orderId: order.id });
+                    } else {
+                        console.log('[MAIL][claim] OK — este processo vai enviar o e-mail', { orderId: order.id, at: nowIso });
 
-                    await sendTicketsEmail({
-                        to: user?.email,
-                        name: user?.name || 'Cliente',
-                        orderId: order.id,
-                        tickets,
-                    });
+                        const { sendTicketsEmail } = require('../services/email.service');
+
+                        // carrega comprador + itens (com tokens e códigos)
+                        const { data: info, error: infoErr } = await supabase
+                            .from('orders')
+                            .select(`
+                                id,
+                                user:users!orders_user_id_fkey(name, email),
+                                items:order_items(
+                                qr_token,
+                                seat:seat_id(row_label, seat_number)
+                                )
+                            `)
+                            .eq('id', order.id)
+                            .single();
+
+                        if (infoErr) {
+                            console.error('[MAIL][dbg] erro ao carregar info do pedido', infoErr);
+                        } else {
+                            const to = info?.user?.email || null;
+                            if (!to) {
+                                console.warn('[MAIL][skip] comprador sem e-mail; não envio', { orderId: order.id });
+                            } else {
+                                const tickets = (info.items || []).map(it => ({
+                                    qr_token: it.qr_token,
+                                    code: `${it.seat.row_label}-${String(it.seat.seat_number).padStart(2, '0')}`,
+                                }));
+
+                                console.log('[MAIL][dbg] preparando envio', { to, orderId: order.id, qty: tickets.length });
+
+                                await sendTicketsEmail({
+                                    to,
+                                    name: info?.user?.name || 'Cliente',
+                                    orderId: order.id,
+                                    tickets,
+                                });
+
+                                console.log('[MAIL][ok] e-mail enviado', { to, orderId: order.id });
+                            }
+                        }
+                    }
                 } catch (e) {
-                    console.error('[MAIL] erro pós-pagamento', e);
+                    console.error('[MAIL] erro no fluxo de envio/idempotência', e);
                 }
+
 
                 // 4) seats do pedido -> sold
                 const { data: items } = await supabase
@@ -206,34 +242,69 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 else console.log('[MP] order marked as paid', upd2);
                 await ensureQrTokensForOrder(order.id);
 
-                // ==== ENVIO DE INGRESSOS POR E-MAIL ====
-                const { sendTicketsEmail } = require('../services/email.service');
+                // ==== CLAIM: garante que o e-mail será enviado apenas 1x por pedido ====
                 try {
-                    // buscar comprador e ingressos
-                    const { data: user } = await supabase
-                        .from('users')
-                        .select('name,email')
-                        .eq('id', order.user_id)
+                    const nowIso = new Date().toISOString();
+                    const { data: claimed, error: claimErr } = await supabase
+                        .from('orders')
+                        .update({ tickets_emailed_at: nowIso })
+                        .is('tickets_emailed_at', null)   // só atualiza se ainda for null
+                        .eq('id', order.id)
+                        .select('id, tickets_emailed_at')
                         .single();
 
-                    const { data: items } = await supabase
-                        .from('order_items')
-                        .select('qr_token, seat_id, seats:seat_id(row_label, seat_number)')
-                        .eq('order_id', order.id);
+                    if (claimErr) {
+                        console.error('[MAIL][claim] erro ao marcar tickets_emailed_at', { orderId: order.id, claimErr });
+                    }
 
-                    const tickets = (items || []).map(it => ({
-                        qr_token: it.qr_token,
-                        code: `${it.seats.row_label}-${String(it.seats.seat_number).padStart(2, '0')}`,
-                    }));
+                    if (!claimed) {
+                        console.log('[MAIL][skip] e-mail já enviado para este pedido — ignorando novo envio', { orderId: order.id });
+                    } else {
+                        console.log('[MAIL][claim] OK — este processo vai enviar o e-mail', { orderId: order.id, at: nowIso });
 
-                    await sendTicketsEmail({
-                        to: user?.email,
-                        name: user?.name || 'Cliente',
-                        orderId: order.id,
-                        tickets,
-                    });
+                        const { sendTicketsEmail } = require('../services/email.service');
+
+                        // carrega comprador + itens (com tokens e códigos)
+                        const { data: info, error: infoErr } = await supabase
+                            .from('orders')
+                            .select(`
+                                id,
+                                user:users!orders_user_id_fkey(name, email),
+                                items:order_items(
+                                qr_token,
+                                seat:seat_id(row_label, seat_number)
+                                )
+                            `)
+                            .eq('id', order.id)
+                            .single();
+
+                        if (infoErr) {
+                            console.error('[MAIL][dbg] erro ao carregar info do pedido', infoErr);
+                        } else {
+                            const to = info?.user?.email || null;
+                            if (!to) {
+                                console.warn('[MAIL][skip] comprador sem e-mail; não envio', { orderId: order.id });
+                            } else {
+                                const tickets = (info.items || []).map(it => ({
+                                    qr_token: it.qr_token,
+                                    code: `${it.seat.row_label}-${String(it.seat.seat_number).padStart(2, '0')}`,
+                                }));
+
+                                console.log('[MAIL][dbg] preparando envio', { to, orderId: order.id, qty: tickets.length });
+
+                                await sendTicketsEmail({
+                                    to,
+                                    name: info?.user?.name || 'Cliente',
+                                    orderId: order.id,
+                                    tickets,
+                                });
+
+                                console.log('[MAIL][ok] e-mail enviado', { to, orderId: order.id });
+                            }
+                        }
+                    }
                 } catch (e) {
-                    console.error('[MAIL] erro pós-pagamento', e);
+                    console.error('[MAIL] erro no fluxo de envio/idempotência', e);
                 }
 
                 const { data: items } = await supabase

@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS orders (
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method text;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS installments int DEFAULT 1;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tickets_emailed_at timestamptz;
 
 -- Order Items
 CREATE TABLE IF NOT EXISTS order_items (

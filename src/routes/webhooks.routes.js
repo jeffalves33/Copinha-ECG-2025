@@ -84,7 +84,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
             // 2) Obter pedido
             const { data: order } = await supabase
                 .from('orders')
-                .select('id, status')
+                .select('id, status, user_id')
                 .eq('id', orderId)
                 .single();
             if (!order) return res.sendStatus(200);
@@ -168,7 +168,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
             // 2) Encontrar order pela provider_ref (preference_id)
             const { data: order } = await supabase
                 .from('orders')
-                .select('id, status')
+                .select('id, status, user_id')
                 .eq('provider_ref', prefId)
                 .single();
             if (!order) return res.sendStatus(200);

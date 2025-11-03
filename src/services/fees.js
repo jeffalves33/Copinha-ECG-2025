@@ -23,6 +23,7 @@ function computeFeesFromOrders(orders = []) {
     for (const o of orders) {
         const amount = Number(o.total_amount || 0);
         const method = (o.payment_method || '').toLowerCase();
+        console.log("🚀 ~ computeFeesFromOrders ~ method: ", method)
         const installments = Number(o.installments || 1);
         gross += amount;
 

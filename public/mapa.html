@@ -142,34 +142,32 @@
     </div>
   </footer>
 
-  <!-- Modal: Vaga Acessível -->
-  <div id="wc-modal" class="modal-overlay" style="display:none;">
+  <!-- Modal: Poltrona Reservada -->
+  <div id="reserved-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card">
-      <h3 style="margin:0 0 8px 0;">Vaga Acessível ♿</h3>
+      <h3 style="margin:0 0 8px 0;">Poltrona Reservada 🟡</h3>
       <p style="margin:0 0 16px 0; line-height:1.4;">
-        Este espaço é reservado para pessoas cadeirantes e <strong>não possui poltrona física</strong>.
-        Caso você precise dessa vaga, conclua sua compra normalmente e nossa equipe dará suporte na chegada.
+        Um usuário <strong>está comprando essa poltrona agora</strong>. Caso ele não finalize a compra,
+        a poltrona ficará novamente disponível em até 10 minutos.
       </p>
       <div style="display:flex; justify-content:flex-end;">
-        <button class="btn btn-secondary" onclick="confirmWheelchairSeat()">Entendi</button>
+        <button class="btn btn-secondary" onclick="closeReservedModal()">Entendi</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Já selecionado -->
-  <div id="selected-modal" class="modal-overlay" style="display:none;">
+  <!-- Modal: Poltrona Vendida -->
+  <div id="sold-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card">
-      <h3 style="margin:0 0 8px 0;">Poltrona indisponível 💺</h3>
+      <h3 style="margin:0 0 8px 0;">Poltrona Vendida ❌</h3>
       <p style="margin:0 0 16px 0; line-height:1.4;">
-        Infelizmente <strong> alguém acabou de selecionar essa poltrona</strong>.
-        Caso não seja finalizada a compra, em 10 minutos ela voltará a ficar disponível.
+        Esta poltrona já foi <strong>vendida</strong> e não está mais disponível para seleção.
       </p>
       <div style="display:flex; justify-content:flex-end;">
-        <button class="btn btn-secondary" onclick="confirmSelectedSeat()">Entendi</button>
+        <button class="btn btn-secondary" onclick="closeSoldModal()">Entendi</button>
       </div>
     </div>
   </div>
-
 
   <script src="assets/js/app.js"></script>
   <script>
@@ -416,12 +414,10 @@
               g.appendChild(wc);
             }
 
-            if (status === 'available') {
-              g.addEventListener('click', () => toggleSeat(it.code, g));
-              g.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); g.dispatchEvent(new Event('click')); }
-              });
-            }
+            g.addEventListener('click', () => toggleSeat(it.code, g));
+            g.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); g.dispatchEvent(new Event('click')); }
+            });
 
             svg.appendChild(g);
             xLeft += stepX;
@@ -485,9 +481,19 @@
 
       const status = seatData[seatId]?.status || 'available';
 
-      // não deixa clicar em ocupado/vendido
-      if (status === 'occupied' || status === 'sold' || status === 'reserved' && !seatGroupEl.classList.contains('selected')) {
-        // 'reserved' pode ser por outro usuário; no seu desenho já aparece amarelo
+      // bloqueia cliques em estados não disponíveis e exibe modais
+      if (status === 'sold') {
+        document.getElementById('sold-modal').style.display = 'flex';
+        return;
+      }
+
+      if (status === 'reserved' && !seatGroupEl.classList.contains('selected')) {
+        document.getElementById('reserved-modal').style.display = 'flex';
+        return;
+      }
+
+      if (status === 'occupied') {
+        document.getElementById('sold-modal').style.display = 'flex'; // mesmo modal, se preferir
         return;
       }
 
@@ -566,6 +572,15 @@
       document.getElementById('selected-modal').style.display = 'none';
       //location.reload();
     }
+
+    function closeReservedModal() {
+      document.getElementById('reserved-modal').style.display = 'none';
+    }
+
+    function closeSoldModal() {
+      document.getElementById('sold-modal').style.display = 'none';
+    }
+
 
     // ==========================
     // BOOT

@@ -94,7 +94,6 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 // 3) marcar pedido como pago e salvar payment id
                 // Derivar método e parcelas a partir do Payment:
                 const method = pay.payment_method_id === 'pix' || pay.payment_type_id === 'bank_transfer' ? 'pix' : 'card';
-                console.log("🚀 ~ router.post ~ pay.payment_method_id: ", pay.payment_method_id)
                 const installments = Number(pay.installments || 1);
 
                 // Atualiza status + provider_payment_id + método e parcelas

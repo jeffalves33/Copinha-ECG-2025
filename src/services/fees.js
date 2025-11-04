@@ -8,7 +8,6 @@ const MODE = (process.env.MP_INSTALLMENT_MODE || 'buyer').toLowerCase(); // 'buy
 const FEE_2X = Number(process.env.MP_INSTALLMENT_2X_SELLER_FEE ?? 0);
 
 function computeFeesFromOrders(orders = []) {
-    console.log("🚀 ~ computeFeesFromOrders ~ orders: ", orders)
     let gross = 0;
     const fees = {
         card_mdr: 0,
@@ -24,7 +23,6 @@ function computeFeesFromOrders(orders = []) {
     for (const o of orders) {
         const amount = Number(o.total_amount || 0);
         const method = (o.payment_method || '').toLowerCase();
-        console.log("🚀 ~ computeFeesFromOrders ~ method: ", method)
         const installments = Number(o.installments || 1);
         gross += amount;
 
@@ -59,11 +57,9 @@ function computeFeesFromOrders(orders = []) {
                 break;
         }
         fees.fixed += FIXED;
-        console.log("🚀 ~ computeFeesFromOrders ~ fees: ", fees)
     }
 
     fees.total = fees.card_mdr + fees.pix_mdr + fees.mp_mdr + fees.bankslip_mdr + fees.installment + fees.fixed;
-    console.log("🚀 ~ computeFeesFromOrders ~ fees.total: ", fees.total)
     const net = Math.max(gross - fees.total, 0);
     return { gross, net, fees };
 }

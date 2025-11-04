@@ -19,7 +19,7 @@ async function api(path, opts) {
 async function populateSessionsSelect(selectId, includeAll = true) {
   const sel = qs('#' + selectId);
   if (!sel) return;
-  sel.innerHTML = includeAll ? `<option value="">Todas</option>` : '';
+  sel.innerHTML = includeAll ? `<option value="">Selecione</option>` : '';
 
   const r = await fetch('/api/sessions');
   if (!r.ok) return;
@@ -192,6 +192,7 @@ window.AdminSales = AdminSales;
 const AdminSeats = {
   async loadSeats() {
     const sess = qs('#seatFilterSession')?.value || '';
+    if(!sess) return;
     const floor = qs('#seatFilterFloor')?.value || '';
     const q = qs('#seatSearch')?.value || '';
     const params = new URLSearchParams();

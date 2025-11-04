@@ -478,6 +478,7 @@
       for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
       return el;
     }
+
     function textEl(x, y, txt, attrs = {}) {
       const el = svgEl('text', { x, y, ...attrs });
       el.textContent = txt; return el;

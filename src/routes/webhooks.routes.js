@@ -82,6 +82,24 @@ async function notifyAll(payload) {
     }
 }
 
+async function getFirstNameByUserId(userId) {
+    try {
+        if (!userId) return null;
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', userId)
+            .maybeSingle();
+        if (error) return null;
+        const full = (user?.name || '').trim();
+        if (!full) return null;
+        return full.split(/\s+/)[0];
+    } catch {
+        return null;
+    }
+}
+
+
 
 // Util: extrai (topic,type) e id de forma robusta (query ou body)
 function parseNotification(req) {
@@ -113,7 +131,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
             // 2) Obter pedido
             const { data: order } = await supabase
                 .from('orders')
-                .select('id, status, user_id, total_amount, session_id')
+                .select('id, status, user_id, total_amount, session_id, user_id')
                 .eq('id', orderId)
                 .single();
             if (!order) return res.sendStatus(200);
@@ -142,13 +160,13 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 await ensureQrTokensForOrder(order.id);
 
                 try {
-                    // pegue o total para exibir no push (se já tiver no select)
                     const amount = Number(order.total_amount || 0).toLocaleString('pt-BR', {
                         style: 'currency', currency: 'BRL'
                     });
+                    const firstName = (await getFirstNameByUserId(order.user_id)) || 'Cliente';
                     await notifyAll({
                         title: 'Nova venda 💸',
-                        body: `${amount} confirmados`,
+                        body: `${amount} - ${firstName}`,
                         data: { orderId: order.id }
                     });
                 } catch (e) {

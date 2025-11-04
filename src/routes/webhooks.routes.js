@@ -4,6 +4,13 @@ const router = express.Router();
 const { supabase } = require('../services/supabase');
 const { getMerchantOrder, getPayment } = require('../services/mercadoPago.service');
 const crypto = require('crypto');
+const webpush = require('web-push');
+
+webpush.setVapidDetails(
+    process.env.PUSH_CONTACT || 'mailto:najuevents@gmail.com',
+    process.env.VAPID_PUBLIC,
+    process.env.VAPID_PRIVATE
+);
 
 // no topo já existe: const crypto = require('crypto');
 async function ensureQrTokensForOrder(orderId) {
@@ -54,6 +61,28 @@ function merchantOrderIsPaid(mo) {
     return totalApproved >= (mo.total_amount || 0);
 }
 
+async function notifyAll(payload) {
+    const { data: subs } = await supabase
+        .from('push_subscriptions')
+        .select('id, endpoint, p256dh, auth');
+
+    for (const s of (subs || [])) {
+        try {
+            await webpush.sendNotification({
+                endpoint: s.endpoint,
+                keys: { p256dh: s.p256dh, auth: s.auth }
+            }, JSON.stringify(payload));
+        } catch (err) {
+            if (err.statusCode === 404 || err.statusCode === 410) {
+                await supabase.from('push_subscriptions').delete().eq('id', s.id);
+            } else {
+                console.error('[PUSH] send error', err);
+            }
+        }
+    }
+}
+
+
 // Util: extrai (topic,type) e id de forma robusta (query ou body)
 function parseNotification(req) {
     const q = req.query || {};
@@ -84,7 +113,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
             // 2) Obter pedido
             const { data: order } = await supabase
                 .from('orders')
-                .select('id, status, user_id')
+                .select('id, status, user_id, total_amount, session_id')
                 .eq('id', orderId)
                 .single();
             if (!order) return res.sendStatus(200);
@@ -111,6 +140,20 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 if (upd1err) console.error('[MP] update order error', upd1err);
                 else console.log('[MP] order marked as paid', upd1);
                 await ensureQrTokensForOrder(order.id);
+
+                try {
+                    // pegue o total para exibir no push (se já tiver no select)
+                    const amount = Number(order.total_amount || 0).toLocaleString('pt-BR', {
+                        style: 'currency', currency: 'BRL'
+                    });
+                    await notifyAll({
+                        title: 'Nova venda 💸',
+                        body: `${amount} confirmados`,
+                        data: { orderId: order.id }
+                    });
+                } catch (e) {
+                    console.error('[PUSH] erro ao notificar', e);
+                }
 
                 // ==== CLAIM: garante que o e-mail será enviado apenas 1x por pedido ====
                 try {
@@ -204,7 +247,7 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
             // 2) Encontrar order pela provider_ref (preference_id)
             const { data: order } = await supabase
                 .from('orders')
-                .select('id, status, user_id')
+                .select('id, status, user_id, total_amount, session_id')
                 .eq('provider_ref', prefId)
                 .single();
             if (!order) return res.sendStatus(200);
@@ -241,6 +284,20 @@ router.post('/webhooks/mercado-pago', express.json(), async (req, res) => {
                 if (upd2err) console.error('[MP] update order error', upd2err);
                 else console.log('[MP] order marked as paid', upd2);
                 await ensureQrTokensForOrder(order.id);
+
+                try {
+                    // pegue o total para exibir no push (se já tiver no select)
+                    const amount = Number(order.total_amount || 0).toLocaleString('pt-BR', {
+                        style: 'currency', currency: 'BRL'
+                    });
+                    await notifyAll({
+                        title: 'Nova venda 💸',
+                        body: `${amount} confirmados`,
+                        data: { orderId: order.id }
+                    });
+                } catch (e) {
+                    console.error('[PUSH] erro ao notificar', e);
+                }
 
                 // ==== CLAIM: garante que o e-mail será enviado apenas 1x por pedido ====
                 try {

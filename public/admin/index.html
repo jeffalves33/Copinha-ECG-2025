@@ -8,6 +8,8 @@
   <link rel="icon" type="image/png" href="../assets/img/logo.png">
   <link rel="stylesheet" href="../assets/css/styles.css" />
   <link rel="stylesheet" href="css/admin.css" />
+  <link rel="manifest" href="../manifest.json">
+  <link rel="apple-touch-icon" href="../assets/img/icon-180.jpg">
 </head>
 
 <body>
@@ -17,7 +19,10 @@
         <div class="admin-logo">
           <h1>📊 Painel Admin</h1>
         </div>
-        <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+        <div>
+          <button id="enablePush" class="btn btn-secondary">Ativar notificações</button>
+          <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+        </div>
       </div>
     </div>
   </header>
@@ -215,6 +220,7 @@
     </div>
   </main>
 
+  <script src="/js/push.js"></script>
   <script src="../assets/js/app.js"></script>
   <script src="js/admin.js"></script>
   <script>

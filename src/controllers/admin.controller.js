@@ -81,59 +81,50 @@ async function getDashboardMetrics(req, res, next) {
     } catch (e) { next(e); }
 }
 
+// função do controller corrigida: conta a partir de seats.status
 async function getSessionsSoldCounts(req, res, next) {
     const ID_16H = 'a6e2b3cd-9800-4169-8f11-39ae32cc783b';
     const ID_19H = 'f262d766-a9a6-4ac6-8938-e39e2bbaadf2';
-    const TOTAL_BY_SESSION = 652;
     const PRICE = 1;
+
     try {
-        const { data, error } = await supabase
-            .from('order_items')
-            .select(`
-                seats:seat_id ( session_id ),
-                orders:order_id ( status )
-            `)
-            .eq('orders.status', 'paid');
+        const q = (sessionId, status) =>
+            supabase
+                .from('seats')
+                .select('id', { count: 'exact', head: true }) // não retorna linhas, só o count
+                .eq('session_id', sessionId)
+                .eq('status', status);
 
-        if (error) throw error;
+        const [
+            rA16, rS16, rA19, rS19
+        ] = await Promise.all([
+            q(ID_16H, 'available'),
+            q(ID_16H, 'sold'),
+            q(ID_19H, 'available'),
+            q(ID_19H, 'sold'),
+        ]);
 
-        // conta vendidos só das duas sessões desejadas
-        let sold16 = 0, sold19 = 0;
+        // checagem de erro (qualquer um dos 4)
+        const err = rA16.error || rS16.error || rA19.error || rS19.error;
+        if (err) throw err;
 
-        for (const it of data || []) {
-            const sess = it?.seats?.session_id;
-            if (!sess) continue;
-            if (sess === ID_16H) sold16++;
-            else if (sess === ID_19H) sold19++;
-        }
-
-        const available16 = Math.max(TOTAL_BY_SESSION - sold16, 0);
-        const available19 = Math.max(TOTAL_BY_SESSION - sold19, 0);
-
-        const revenue16 = sold16 * PRICE;
-        const revenue19 = sold19 * PRICE;
+        const available16 = rA16.count || 0;
+        const sold16 = rS16.count || 0;
+        const available19 = rA19.count || 0;
+        const sold19 = rS19.count || 0;
 
         return res.json({
             ok: true,
             sessions: [
-                {
-                    session: '16h',
-                    sold: sold16,
-                    available: available16,
-                    revenue: revenue16
-                },
-                {
-                    session: '19h',
-                    sold: sold19,
-                    available: available19,
-                    revenue: revenue19
-                }
+                { session: '16h', sold: sold16, available: available16, revenue: sold16 * PRICE },
+                { session: '19h', sold: sold19, available: available19, revenue: sold19 * PRICE },
             ]
         });
     } catch (err) {
         return next(err);
     }
 }
+
 
 async function listSales(req, res, next) {
     try {

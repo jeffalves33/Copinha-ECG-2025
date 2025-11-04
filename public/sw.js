@@ -5,8 +5,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(data.title || 'Nova venda 💸', {
             body: data.body || '',
-            icon: '/assets/img/icon-192.png',
-            badge: '/assets/img/icon-192.png',
+            icon: '../assets/img/icon-192.png',
+            badge: '../assets/img/icon-192.png',
             data: data.data || {}
         })
     );

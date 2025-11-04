@@ -1,4 +1,4 @@
-const VAPID_PUBLIC = '<COLE_A_PUBLIC_KEY_AQUI>'; // (passo 3.2)
+const VAPID_PUBLIC = 'BBotbX2nGq5sd4gHItt1O4dOs76kDZwm67GNCiLK5Qh_yk_BXY810ADKzVdu3qixjfOX4EIXFErH5HgXNWBANNY'; // (passo 3.2)
 
 function urlB64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);

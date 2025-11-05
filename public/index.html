@@ -10,6 +10,46 @@
   <link rel="stylesheet" href="assets/css/styles.css">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/img/icon-180.jpg">
+  <style>
+    #saleGate {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #0b0b0f;
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #saleGate.visible {
+      display: flex;
+    }
+
+    #saleGate h1 {
+      font: 600 20px/1.2 system-ui, sans-serif;
+      margin: 0 0 8px;
+    }
+
+    #saleGate .when {
+      opacity: .8;
+      margin-bottom: 16px;
+    }
+
+    #countdown {
+      font: 700 40px/1 system-ui, sans-serif;
+      letter-spacing: 1px;
+    }
+
+    .blocked {
+      pointer-events: none;
+      filter: grayscale(1);
+      opacity: .6;
+    }
+  </style>
 </head>
 
 <body>
@@ -156,13 +196,91 @@
               rel="noopener noreferrer">WhatsApp</a></li>
           <li><a href="#">Contato</a></li>
         </ul>-->
-        <a href="https://www.ingressosnaju.com.br/admin" target="_blank"
-          rel="noopener noreferrer">admin</a>
+        <a href="https://www.ingressosnaju.com.br/admin" target="_blank" rel="noopener noreferrer">admin</a>
       </div>
     </div>
   </footer>
 
+  <div id="saleGate" class="visible">
+    <h1>Vendas não iniciadas</h1>
+    <div class="when">Abertura às <b>14:00</b> de <b>05/11/2025</b> (horário de São Paulo)</div>
+    <div id="countdown">--:--:--</div>
+    <small style="opacity:.7;margin-top:10px">A página libera automaticamente no horário.</small>
+  </div>
+
   <script src="assets/js/app.js"></script>
+
+  <script>
+    (async function () {
+      const gate = document.getElementById('saleGate');
+      const countdownEl = document.getElementById('countdown');
+
+      // elementos que deseja travar até abrir
+      const toBlock = [
+        ...document.querySelectorAll('.blocked-when-closed'),
+        // exemplo: document.getElementById('btnCheckout'),
+        // exemplo: document.getElementById('seatsGrid'),
+      ];
+
+      function setBlocked(b) {
+        toBlock.forEach(el => {
+          if (!el) return;
+          if (b) el.classList.add('blocked');
+          else el.classList.remove('blocked');
+        });
+      }
+
+      // pega hora do servidor (evita "trapacear" mudando relógio do cliente)
+      const r = await fetch('/api/sales/status').then(r => r.json()).catch(() => ({ ok: false }));
+      if (!r?.ok) {
+        gate.classList.add('visible'); // por segurança, bloqueia
+        countdownEl.textContent = 'indisponível';
+        setBlocked(true);
+        return;
+      }
+
+      const start = new Date(r.startsAt).getTime();
+      const serverNow = new Date(r.now).getTime();
+      const clientNow = Date.now();
+      // diferença entre relógios (alinha contagem ao servidor)
+      const drift = serverNow - clientNow;
+
+      function format(ms) {
+        if (ms <= 0) return '00:00:00';
+        const total = Math.floor(ms / 1000);
+        const h = String(Math.floor(total / 3600)).padStart(2, '0');
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+        const s = String(total % 60).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+      }
+
+      function tick() {
+        const now = Date.now() + drift;
+        const left = start - now;
+        if (left <= 0) {
+          gate.classList.remove('visible');
+          setBlocked(false);
+          clearInterval(tmr);
+          return;
+        }
+        countdownEl.textContent = format(left);
+      }
+
+      if (r.open) {
+        gate.classList.remove('visible');
+        setBlocked(false);
+      } else {
+        gate.classList.add('visible');
+        setBlocked(true);
+        tick();
+        const tmr = setInterval(tick, 1000);
+      }
+
+      // proteção extra: se alguém tentar forçar um checkout antes, o backend retorna 403
+      // trate isso onde você chama /api/orders/checkout, exibindo uma mensagem amigável.
+    })();
+  </script>
+
 </body>
 
 </html>

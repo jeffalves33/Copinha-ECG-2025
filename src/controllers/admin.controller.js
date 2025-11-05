@@ -85,7 +85,7 @@ async function getDashboardMetrics(req, res, next) {
 async function getSessionsSoldCounts(req, res, next) {
     const ID_16H = 'a6e2b3cd-9800-4169-8f11-39ae32cc783b';
     const ID_19H = 'f262d766-a9a6-4ac6-8938-e39e2bbaadf2';
-    const PRICE = 1;
+    const PRICE = 70;
 
     try {
         const q = (sessionId, status) =>

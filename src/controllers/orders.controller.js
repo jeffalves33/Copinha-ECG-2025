@@ -48,14 +48,43 @@ async function checkout(req, res, next) {
 
             if (preOrders && preOrders.length) {
                 const orderIds = preOrders.map(o => o.order_id);
-                if (orderIds.length) {
-                    const { count, error: cErr } = await supabase
+                const nowIso = new Date().toISOString();
+
+                // 2.1) pedidos já pagos -> contam sempre
+                const { data: paidOrders, error: poErr } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .in('id', orderIds)
+                    .eq('status', 'paid');
+                if (poErr) throw poErr;
+
+                const paidIds = (paidOrders || []).map(o => o.id);
+                if (paidIds.length) {
+                    const { count: paidCount, error: c1 } = await supabase
                         .from('order_items')
                         .select('id', { count: 'exact', head: true })
-                        .in('order_id', orderIds)
-                        .in('status', ['reserved', 'issued', 'checked_in']);
-                    if (cErr) throw cErr;
-                    used = count || 0;
+                        .in('order_id', paidIds);
+                    if (c1) throw c1;
+                    used += paidCount || 0;
+                }
+
+                // 2.2) pedidos não pagos -> só contam itens cuja reserva AINDA NÃO EXPIROU
+                const { data: pendingOrders, error: pnErr } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .in('id', orderIds)
+                    .neq('status', 'paid');
+                if (pnErr) throw pnErr;
+
+                const pendingIds = (pendingOrders || []).map(o => o.id);
+                if (pendingIds.length) {
+                    const { count: pendCount, error: c2 } = await supabase
+                        .from('order_items')
+                        .select('id', { count: 'exact', head: true })
+                        .in('order_id', pendingIds)
+                        .gt('reserve_expires', nowIso); // <<< chave: só conta reserva válida
+                    if (c2) throw c2;
+                    used += pendCount || 0;
                 }
             }
 

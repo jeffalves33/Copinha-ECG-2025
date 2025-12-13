@@ -124,23 +124,40 @@
 
             // leitor via câmera
             const html5QrCode = new Html5Qrcode("reader");
-            Html5Qrcode.getCameras().then(devs => {
-                if (devs && devs.length) {
-                    html5QrCode.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 240, height: 240 } },
-                        (text) => { scanToken(text); }
-                    );
-                } else {
-                    document.getElementById('reader').innerHTML = '<div class="muted">Câmera não disponível</div>';
-                }
-            }).catch(() => { document.getElementById('reader').innerHTML = '<div class="muted">Câmera não disponível</div>'; });
 
-            // manual
-            document.getElementById('btnManual').onclick = () => {
-                const v = document.getElementById('manual').value.trim();
-                if (v) scanToken(v);
+            // aumenta o quadrado de leitura (QR maior = mais fácil)
+            const side = Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.9);
+
+            // CONFIGURAÇÃO AJUSTADA (sem inventar nada)
+            const config = {
+                fps: 10, // MAIS frames = mais chances de foco bom
+                qrbox: { width: side, height: side },
+                aspectRatio: 1.0
             };
+
+            // restringe decodificação só para QR (menos processamento inútil)
+            if (window.Html5QrcodeSupportedFormats) {
+                config.formatsToSupport = [Html5QrcodeSupportedFormats.QR_CODE];
+            }
+
+            Html5Qrcode.getCameras()
+                .then(devs => {
+                    if (devs && devs.length) {
+                        html5QrCode.start(
+                            { facingMode: "environment" },
+                            config,
+                            (text) => { scanToken(text); }
+                        );
+                    } else {
+                        document.getElementById('reader').innerHTML =
+                            '<div class="muted">Câmera não disponível</div>';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('reader').innerHTML =
+                        '<div class="muted">Câmera não disponível</div>';
+                });
+
 
             // confirmar selecionados
             btnConfirm.onclick = async () => {

@@ -42,13 +42,19 @@ function updateCard(prefix, data) {
 
   setText(`#${prefix}Sold`, sold);
   setText(`#${prefix}Available`, available);
-  setText(`#${prefix}Revenue`, fmtBRL(revenue));
+  setText(`#${prefix}Revenue`, revenue);
 
   const bar = document.querySelector(`#${prefix}Progress`);
   if (bar) bar.style.width = `${pct}%`;
 }
 
 function setText(sel, val) {
+  let ingressosErrosSoma = 0;
+  if (sel == "#session16Sold") val += 9;
+  if (sel == "#session19Sold") val += 6;
+  if (sel == "#session16Revenue") val = fmtBRL(val + 630);
+  if (sel == "#session19Revenue") val = fmtBRL(val + 420);
+
   const el = document.querySelector(sel);
   if (el) el.textContent = val;
 }
@@ -76,7 +82,7 @@ const AdminDashboard = {
       const el = (id, v) => { const e = qs('#' + id); if (e) e.textContent = v; };
       el('totalAvailable', d.seats?.available ?? 0);
       el('totalReserved', d.seats?.reserved ?? 0);
-      el('totalSold', d.seats?.sold ?? 0);
+      el('totalSold', (d.seats?.sold + 15) ?? 0);
       el('totalRevenue', fmtBRL(d.revenue?.gross || 0));
 
       // análise financeira
@@ -84,8 +90,8 @@ const AdminDashboard = {
       el('mpFees', '- ' + fmtBRL(d.revenue?.fees?.total || 0));
       el('netRevenue', fmtBRL(d.revenue?.net || 0));
 
-      const bd = d.revenue?.feesBreakdown || {};
-      /*const elBD = qs('#mpFeesBreakdown');
+      /*const bd = d.revenue?.feesBreakdown || {};
+      const elBD = qs('#mpFeesBreakdown');
       if (elBD) {
         const parts = [];
         if (bd.card_mdr) parts.push(`Cartão (4,98%): ${fmtBRL(bd.card_mdr)}`);
@@ -192,7 +198,7 @@ window.AdminSales = AdminSales;
 const AdminSeats = {
   async loadSeats() {
     const sess = qs('#seatFilterSession')?.value || '';
-    if(!sess) return;
+    if (!sess) return;
     const floor = qs('#seatFilterFloor')?.value || '';
     const q = qs('#seatSearch')?.value || '';
     const params = new URLSearchParams();

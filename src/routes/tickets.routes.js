@@ -1,3 +1,16 @@
+/**
+ O que eu SEI que é o problema (com base no seu código + no PDF)
+
+Seu QR foi gerado sem “quiet zone” (margem branca): no seu gerador você faz QRCode.toBuffer(payload, { width: 520, margin: 0 }). Ou seja, margem 0. Isso torna a leitura muito mais frágil e costuma exigir QR bem centralizado, bem focado e numa distância específica. Isso por si só já explica “só lê quando encaixa perfeito”.
+
+O QR no ingresso está em um layout escuro e “apertado”. Somando isso com margin: 0, o scanner (ZXing no Flutter) precisa de muito mais estabilidade para detectar os cantos/padrões do QR.
+
+A câmera nativa do celular ler “rápido” não prova que o QR é “bom”. Ela usa heurísticas bem agressivas (e em alguns aparelhos até pipeline do fabricante) e consegue decodificar coisa que bibliotecas comuns demoram ou falham. Por isso: camera nativa instantânea + app lento é um sintoma clássico de QR “difícil” (principalmente sem quiet-zone).
+
+✅ Conclusão honesta: o gargalo real é a qualidade/formatos do QR no ingresso (principalmente margin=0). O app dá pra melhorar, mas não dá pra prometer ficar igual scanner nativo sem mudar o QR.
+ */
+
+
 // src/routes/tickets.routes.js
 const router = require('express').Router();
 const { supabase } = require('../services/supabase');
